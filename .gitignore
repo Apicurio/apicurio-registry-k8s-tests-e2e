@@ -1,0 +1,5 @@
+kind
+install-olm.sh
+TEST-*.xml
+tests-logs
+*.coverprofile

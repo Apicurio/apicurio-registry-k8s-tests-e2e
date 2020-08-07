@@ -1,0 +1,1 @@
+find manifests -name "*.yaml" | xargs sed -e "s,quay.io/apicurio,dummy-registry/test,g" -i
