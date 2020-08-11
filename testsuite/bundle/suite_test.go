@@ -8,7 +8,7 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	suite "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
+	suite "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 )
 
 var log = logf.Log.WithName("bundle-testsuite")
@@ -20,7 +20,7 @@ func init() {
 }
 
 func TestApicurioE2E(t *testing.T) {
-	suite.RunSuite(t, "Operator Bundle Testsuite")
+	suite.RunSuite(t, "Operator Bundle Testsuite", "bundle")
 }
 
 var _ = BeforeSuite(func(done Done) {

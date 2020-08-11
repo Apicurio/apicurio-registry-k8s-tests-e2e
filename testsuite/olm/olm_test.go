@@ -13,9 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
-	utils "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils"
-	testcase "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
-	types "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
+	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
+	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
@@ -160,7 +160,9 @@ func uninstallOperatorOLM() {
 	log.Info("Uninstalling operator")
 
 	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(utils.OperatorNamespace).Delete(operatorSubscriptionName, &metav1.DeleteOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil && !kubeerrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	if operatorCSV != "" {
 		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(utils.OperatorNamespace).Delete(operatorCSV, &metav1.DeleteOptions{})
@@ -170,10 +172,14 @@ func uninstallOperatorOLM() {
 	}
 
 	err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(utils.OperatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil && !kubeerrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	err = suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Delete(catalogSourceName, &metav1.DeleteOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil && !kubeerrors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	utils.DeleteTestNamespace(clientset, utils.OperatorNamespace)
 

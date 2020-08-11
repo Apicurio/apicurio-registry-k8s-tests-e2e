@@ -16,6 +16,8 @@ import (
 )
 
 func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
+	//TODO collect first all pods statuses and cluster events
+
 	operatorDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
@@ -23,6 +25,10 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 			return
 		}
 		Expect(err).ToNot(HaveOccurred())
+	}
+	if operatorDeployment.Status.AvailableReplicas == int32(0) {
+		log.Info("Skipping storing operator logs because operator deployment is not ready")
+		return
 	}
 	labelsSet := labels.Set(operatorDeployment.Spec.Selector.MatchLabels)
 	pods, err := clientset.CoreV1().Pods(OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
@@ -54,10 +60,16 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testName 
 	pods, err := clientset.CoreV1().Pods(OperatorNamespace).List(metav1.ListOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
+	//TODO collect first all pods statuses and cluster events
+
 	logsDir := SuiteProjectDirValue + "/tests-logs/" + suiteID + "/" + testName + "/namespaces/" + OperatorNamespace + "/"
 	os.MkdirAll(logsDir, os.ModePerm)
 
 	for _, pod := range pods.Items {
+		if pod.Status.Phase != v1.PodRunning {
+			log.Info("Skipping storing pod logs because pod is not ready", "pod", pod.Name)
+			continue
+		}
 		req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
 		podLogs, err := req.Stream()
 		Expect(err).ToNot(HaveOccurred())

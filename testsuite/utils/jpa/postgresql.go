@@ -7,9 +7,9 @@ import (
 	. "github.com/onsi/gomega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils"
-	suite "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
-	types "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	suite "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
+	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -146,10 +146,12 @@ func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	obj := &apicurio.ApicurioRegistry{}
 	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace}, obj)
 	if err != nil && !kubeerrors.IsNotFound(err) {
-		log.Info("Removing registry CR")
-		err = suiteCtx.K8sClient.Delete(context.TODO(), obj)
 		Expect(err).ToNot(HaveOccurred())
 	}
+	log.Info("Removing registry CR")
+	err = suiteCtx.K8sClient.Delete(context.TODO(), obj)
+	Expect(err).ToNot(HaveOccurred())
+
 	timeout := 15 * time.Second
 	log.Info("Waiting for registry CR to be removed", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
@@ -165,6 +167,9 @@ func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 		}
 		return false, nil
 	})
+	Expect(err).ToNot(HaveOccurred())
+
+	utils.ExecuteCmdOrDie(true, "kubectl", "get", "apicurioregistry", "-n", utils.OperatorNamespace)
 
 	//TODO operator bug, deployment is not removed
 	// timeout = 30 * time.Second
