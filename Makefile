@@ -16,8 +16,9 @@ export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 run-operator-ci: kind-start kind-load-img run-operator-tests
 run-ci: kind-start kind-load-img run-functional-tests
 
-OPERATOR_METADATA_IMAGE=quay.io/famargon/apicurio-registry-operator-metadata:latest
-CATALOG_SOURCE_IMAGE=quay.io/famargon/apicurio-registry-operator-catalog-source:latest
+OPERATOR_METADATA_IMAGE=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
+# note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
+CATALOG_SOURCE_IMAGE=docker.io/apicurio/apicurio-registry-operator-catalog-source:latest
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 BUNDLE_URL=https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/master/docs/resources/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
@@ -46,7 +47,7 @@ run-all-tests:
 	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v
 
-run-upgrade-tests:
+example-run-upgrade-tests:
 	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/upgrade
 

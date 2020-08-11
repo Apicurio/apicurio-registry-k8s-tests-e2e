@@ -12,9 +12,9 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	utils "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils"
-	testcase "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
-	types "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
+	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
+	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
 var _ = Describe("functional suite", func() {
@@ -44,7 +44,7 @@ func installOperator() {
 
 	utils.CreateTestNamespace(clientset, utils.OperatorNamespace)
 
-	if strings.Contains(utils.OperatorBundlePath, "raw.githubusercontent.com") {
+	if strings.HasPrefix(utils.OperatorBundlePath, "https://") {
 		bundlePath = "/tmp/apicurio-operator-bundle-" + strconv.Itoa(rand.Intn(1000)) + ".yaml"
 		utils.DownloadFile(bundlePath, utils.OperatorBundlePath)
 	}
@@ -53,16 +53,18 @@ func installOperator() {
 		utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
 	)
 
-	defer os.Remove(file.Name())
+	bundlePath = file.Name()
 
 	log.Info("Installing operator")
-	utils.ExecuteCmdOrDie(false, "kubectl", "apply", "-f", file.Name(), "-n", utils.OperatorNamespace)
+	utils.ExecuteCmdOrDie(false, "kubectl", "apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
 	utils.WaitForOperatorDeploymentReady(clientset)
 
 }
 
 func uninstallOperator() {
+
+	defer os.Remove(bundlePath)
 
 	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
 	Expect(clientset).ToNot(BeNil())

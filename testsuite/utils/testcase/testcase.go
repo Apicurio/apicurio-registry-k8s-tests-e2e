@@ -7,11 +7,11 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils"
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
-	"github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
 //ExecuteTestCase common logic to test operator deploying an instance of ApicurioRegistry with one of it's storage variants

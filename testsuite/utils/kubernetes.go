@@ -22,7 +22,9 @@ func CreateTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 //DeleteTestNamespace removes one namespace and waits until it's deleted
 func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	ns, err := clientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil && !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 	if ns != nil {
 		log.Info("Removing namespace", "name", namespace)
 		err = clientset.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{})

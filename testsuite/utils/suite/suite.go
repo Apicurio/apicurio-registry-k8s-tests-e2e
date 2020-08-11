@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
-	utils "github.com/famartinrh/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -110,7 +110,7 @@ func TearDownSuite(suiteCtx *SuiteContext) {
 }
 
 //RunSuite starts the execution of a test suite
-func RunSuite(t *testing.T, suiteName string) {
+func RunSuite(t *testing.T, suiteName string, suiteID string) {
 
 	if utils.SuiteProjectDirValue == "" {
 		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
@@ -122,7 +122,7 @@ func RunSuite(t *testing.T, suiteName string) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf("../../TEST-ginkgo-junit_%s.xml", time.Now().String()))
+	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDirValue+"/tests-logs/"+suiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
 		[]Reporter{printer.NewlineReporter{}, junitReporter},
