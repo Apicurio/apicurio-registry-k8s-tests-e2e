@@ -3,3 +3,4 @@ install-olm.sh
 TEST-*.xml
 tests-logs
 *.coverprofile
+apicurio-registry

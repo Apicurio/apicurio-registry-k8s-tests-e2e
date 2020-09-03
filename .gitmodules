@@ -1,3 +1,0 @@
-[submodule "apicurio-registry"]
-	path = apicurio-registry
-	url = https://github.com/Apicurio/apicurio-registry.git
