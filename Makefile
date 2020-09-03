@@ -45,7 +45,7 @@ else
 	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --config=./scripts/kind-config.yaml
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
 	kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-ssl-passthrough"}]'
-	./scripts/setup-olm.sh
+	./scripts/setup-olm.sh ; if [ $$? -ne 0 ] ; then ./scripts/setup-olm.sh ; fi
 endif
 
 run-all-tests:

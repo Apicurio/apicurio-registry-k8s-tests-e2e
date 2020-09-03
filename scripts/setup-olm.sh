@@ -11,4 +11,5 @@ if [ ! -f "./install-olm.sh" ]; then
     curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/0.15.1/install.sh -o install-olm.sh
     chmod +x install-olm.sh
 fi
-./install-olm.sh 0.15.1 
+./install-olm.sh 0.15.1
+sleep 5
