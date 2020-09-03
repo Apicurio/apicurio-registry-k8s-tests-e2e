@@ -10,6 +10,8 @@ $(error "No kind binary found")
 endif
 endif
 
+GINKGO_CMD = go run github.com/onsi/ginkgo/ginkgo
+
 export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 
 # CI
@@ -49,35 +51,35 @@ else
 endif
 
 run-all-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v
 
 example-run-upgrade-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/upgrade
 
 run-operator-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator
 
 run-functional-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm
 
 run-jpa-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="jpa" ./testsuite/bundle
 
 example-run-jpa-and-streams-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="jpa|streams" -dryRun
 
 example-run-jpa-with-olm-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="olm.*jpa" -dryRun
 
 example-run-jpa-with-olm-and-upgrade-tests:
-	ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="olm.*jpa|upgrade" -dryRun
 
 # repo dependencies utilities
