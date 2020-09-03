@@ -83,7 +83,7 @@ example-run-jpa-with-olm-and-upgrade-tests:
 # repo dependencies utilities
 pull-apicurio-registry:
 ifeq (,$(wildcard ./apicurio-registry))
-	git clone git@github.com:Apicurio/apicurio-registry.git
+	git clone https://github.com/Apicurio/apicurio-registry.git
 else
 	cd apicurio-registry; git pull
 endif
