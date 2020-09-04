@@ -23,10 +23,10 @@ OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:
 CATALOG_SOURCE_IMAGE=docker.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 
-BUNDLE_URL=https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/master/docs/resources/install.yaml
+BUNDLE_URL?=https://raw.githubusercontent.com/Apicurio/apicurio-registry-operator/master/docs/resources/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
-STRIMZI_BUNDLE_URL=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.18.0/strimzi-cluster-operator-0.18.0.yaml
+STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.18.0/strimzi-cluster-operator-0.18.0.yaml
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
