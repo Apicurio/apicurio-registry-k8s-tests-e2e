@@ -15,8 +15,11 @@ GINKGO_CMD = go run github.com/onsi/ginkgo/ginkgo
 export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 
 # CI
-run-operator-ci: kind-start kind-load-img pull-apicurio-registry run-operator-tests
-run-ci: kind-start kind-load-img run-functional-tests
+# run-operator-ci: kind-start kind-catalog-source-img pull-apicurio-registry run-operator-tests
+# FIXME ignoring olm for now
+run-operator-ci: kind-start pull-apicurio-registry run-operator-tests
+
+run-apicurio-ci: kind-start kind-setup-operands-img run-apicurio-tests
 
 # testsuite dependencies
 OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
@@ -33,8 +36,17 @@ export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 create-catalog-source-image:
 	docker build -t $(CATALOG_SOURCE_IMAGE) --build-arg MANIFESTS_IMAGE=$(OPERATOR_METADATA_IMAGE) ./olm-catalog-source
 
-kind-load-img: create-catalog-source-image
+# FIXME ignoring olm for now
+kind-catalog-source-img: create-catalog-source-image
 	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
+
+kind-setup-operands-img: pull-operator-repo
+	cd apicurio-registry-operator; ./build.sh kubefiles -r "docker.io/apicurio" --operands
+	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-mem:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
+	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-kafka:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
+	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-streams:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
+	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-jpa:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
+	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-infinispan:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
 
 kind-delete:
 	${KIND_CMD} delete cluster --name ${KIND_CLUSTER_NAME}
@@ -47,7 +59,8 @@ else
 	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --config=./scripts/kind-config.yaml
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
 	kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-ssl-passthrough"}]'
-	./scripts/setup-olm.sh ; if [ $$? -ne 0 ] ; then ./scripts/setup-olm.sh ; fi
+	# FIXME ignoring olm for now
+	# ./scripts/setup-olm.sh ; if [ $$? -ne 0 ] ; then ./scripts/setup-olm.sh ; fi
 endif
 
 run-all-tests:
@@ -60,11 +73,13 @@ example-run-upgrade-tests:
 
 run-operator-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator
+		--cover --trace --race --progress -v ./testsuite/bundle -- -only-test-operator
+	# FIXME ignoring olm for now
+	# ./testsuite/olm 
 
-run-functional-tests:
+run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm
+		--cover --trace --race --progress -v ./testsuite/bundle
 
 run-jpa-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
@@ -88,4 +103,12 @@ ifeq (,$(wildcard ./apicurio-registry))
 	git clone https://github.com/Apicurio/apicurio-registry.git
 else
 	cd apicurio-registry; git pull
+endif
+
+pull-operator-repo:
+ifeq (,$(wildcard ./apicurio-registry-operator))
+	# git clone https://github.com/Apicurio/apicurio-registry-operator.git
+	git clone --single-branch --branch parametrize-operand-images https://github.com/famartinrh/apicurio-registry-operator.git
+else
+	cd apicurio-registry-operator; git pull
 endif

@@ -14,7 +14,11 @@ func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
 	testProfile := "smoke"
 
 	oldDir, err := os.Getwd()
-	os.Chdir(utils.SuiteProjectDirValue + "/apicurio-registry")
+	apicurioProjectDir := utils.SuiteProjectDirValue + "/apicurio-registry"
+	if utils.ApicurioProjectDir != "" {
+		apicurioProjectDir = utils.ApicurioProjectDir
+	}
+	os.Chdir(apicurioProjectDir)
 
 	var command = []string{"mvn", "verify", "-P" + testProfile, "-P" + ctx.Storage, "-pl", "tests", "-am", "-Dmaven.javadoc.skip=true", "-Dstyle.color=always", "--no-transfer-progress", "-DtrimStackTrace=false"}
 	if utils.ExtraMavenArgs != "" {

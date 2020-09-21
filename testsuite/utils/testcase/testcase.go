@@ -10,6 +10,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -28,6 +29,8 @@ func runRegistryStorageTest(suiteCtx *suite.SuiteContext, ctx *types.TestContext
 
 	if ctx.Storage == utils.StorageJpa {
 		jpa.DeployJpaRegistry(suiteCtx, ctx)
+	} else if ctx.Storage == utils.StorageStreams {
+		streams.DeployStreamsRegistry(suiteCtx, ctx)
 	} else {
 		Expect(errors.New("Storage not implemented")).ToNot(HaveOccurred())
 	}
@@ -49,6 +52,8 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 
 	if ctx.Storage == utils.StorageJpa {
 		jpa.RemoveJpaRegistry(suiteCtx, ctx)
+	} else if ctx.Storage == utils.StorageStreams {
+		streams.RemoveStreamsRegistry(suiteCtx, ctx)
 	} else {
 		return errors.New("Storage not implemented")
 	}

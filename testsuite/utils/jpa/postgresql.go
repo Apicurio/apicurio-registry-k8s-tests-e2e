@@ -12,10 +12,7 @@ import (
 	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	kubetypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 
@@ -72,6 +69,7 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 				Host: "localhost",
 			},
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
+				LogLevel:    "DEBUG",
 				Persistence: utils.StorageJpa,
 				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
 					Url:      dataSourceURL,
@@ -85,53 +83,7 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	err = suiteCtx.K8sClient.Create(context.TODO(), &registry)
 	Expect(err).ToNot(HaveOccurred())
 
-	// var registryDeploymentName string = "apicurio-registry-" + StorageJpa
-
-	timeout = 15 * time.Second
-	log.Info("Waiting for registry CR", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		existing := apicurio.ApicurioRegistry{}
-		err := suiteCtx.K8sClient.Get(context.TODO(),
-			kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace},
-			&existing)
-
-		if err != nil {
-			if errors.IsNotFound(err) {
-				//continue waiting
-				return false, nil
-			}
-			return false, err
-		}
-		//TODO operator is not updating status
-		// if existing.Status.DeploymentName != "" {
-		// 	registryDeploymentName = existing.Status.DeploymentName
-		// 	return true, nil
-		// }
-		return true, nil
-	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
-	Expect(err).ToNot(HaveOccurred())
-
-	timeout = 180 * time.Second
-	log.Info("Waiting for registry deployment to be ready", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		labelsSet := labels.Set(map[string]string{"app": "apicurio-registry-" + utils.StorageJpa})
-
-		deployments, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-		// registryDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(context.TODO(), registryDeploymentName, metav1.GetOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return false, err
-		}
-		if len(deployments.Items) != 0 {
-			registryDeployment := deployments.Items[0]
-			if registryDeployment.Status.AvailableReplicas > int32(0) {
-				return true, nil
-			}
-		}
-		return false, nil
-	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
-	Expect(err).ToNot(HaveOccurred())
+	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
 
 	ctx.RegistryHost = "localhost"
 	ctx.RegistryPort = "80"
@@ -143,63 +95,15 @@ func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
 	Expect(clientset).ToNot(BeNil())
 
-	obj := &apicurio.ApicurioRegistry{}
-	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace}, obj)
-	if err != nil && !kubeerrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
-	}
-	log.Info("Removing registry CR")
-	err = suiteCtx.K8sClient.Delete(context.TODO(), obj)
-	Expect(err).ToNot(HaveOccurred())
-
-	timeout := 15 * time.Second
-	log.Info("Waiting for registry CR to be removed", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		existing := apicurio.ApicurioRegistry{}
-		err := suiteCtx.K8sClient.Get(context.TODO(),
-			kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace},
-			&existing)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		}
-		return false, nil
-	})
-	Expect(err).ToNot(HaveOccurred())
-
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "apicurioregistry", "-n", utils.OperatorNamespace)
-
-	//TODO operator bug, deployment is not removed
-	// timeout = 30 * time.Second
-	// log.Info("Waiting for registry deployment to be removed", "timeout", timeout)
-	// err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-	// 	labelsSet := labels.Set(map[string]string{"app": "apicurio-registry-" + utils.StorageJpa})
-
-	// 	deployments, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-	// 	// registryDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(context.TODO(), registryDeploymentName, metav1.GetOptions{})
-	// 	if err != nil {
-	// 		if errors.IsNotFound(err) {
-	// 			return true, nil
-	// 		}
-	// 		return false, err
-	// 	}
-	// 	if len(deployments.Items) == 0 {
-	// 		return true, nil
-	// 	}
-	// 	return false, nil
-	// })
-	// utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
-	// Expect(err).ToNot(HaveOccurred())
+	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
 
 	log.Info("Removing postgresql database")
 
 	utils.ExecuteCmdOrDie(true, "kubectl", "delete", "-f", utils.SuiteProjectDirValue+"/kubefiles/postgres-deployment.yaml", "-n", utils.OperatorNamespace)
 
-	timeout = 30 * time.Second
+	timeout := 30 * time.Second
 	log.Info("Waiting for postgresql database to be removed ", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		_, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(postgresqlName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
