@@ -42,11 +42,11 @@ kind-catalog-source-img: create-catalog-source-image
 
 kind-setup-operands-img: pull-operator-repo
 	cd apicurio-registry-operator; ./build.sh kubefiles -r "docker.io/apicurio" --operands
-	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-mem:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
-	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-kafka:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
-	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-streams:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
-	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-jpa:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
-	${KIND_CMD} load docker-image docker.io/apicurio/apicurio-registry-infinispan:latest-dev --name $(KIND_CLUSTER_NAME) -v 5
+	sed -i "s#apicurio/apicurio-registry-mem:latest-dev#apicurio/apicurio-registry-mem:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-kafka:latest-dev#apicurio/apicurio-registry-kafka:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-streams:latest-dev#apicurio/apicurio-registry-streams:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-jpa:latest-dev#apicurio/apicurio-registry-jpa:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-infinispan:latest-dev#apicurio/apicurio-registry-infinispan:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
 
 kind-delete:
 	${KIND_CMD} delete cluster --name ${KIND_CLUSTER_NAME}
