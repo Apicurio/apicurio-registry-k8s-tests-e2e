@@ -17,17 +17,18 @@ import (
 	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
 )
 
-func WaitForRegistryReady(K8sClient client.Client, clientset *kubernetes.Clientset, registryName string, storage string) {
+//WaitForRegistryReady common logic to wait for ApicurioRegistry deployment to be ready
+func WaitForRegistryReady(K8sClient client.Client, clientset *kubernetes.Clientset, registryName string) {
 
-	// var registryDeploymentName string = "apicurio-registry-" + storage
+	// var registryDeploymentName string = registryName
 
 	timeout := 15 * time.Second
 	log.Info("Waiting for registry CR", "timeout", timeout)
+	apicurioRegistry := apicurio.ApicurioRegistry{}
 	err := wait.Poll(APIPollInterval, timeout, func() (bool, error) {
-		existing := apicurio.ApicurioRegistry{}
 		err := K8sClient.Get(context.TODO(),
 			kubetypes.NamespacedName{Name: registryName, Namespace: OperatorNamespace},
-			&existing)
+			&apicurioRegistry)
 
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -37,19 +38,24 @@ func WaitForRegistryReady(K8sClient client.Client, clientset *kubernetes.Clients
 			return false, err
 		}
 		//TODO operator is not updating status
-		// if existing.Status.DeploymentName != "" {
-		// 	registryDeploymentName = existing.Status.DeploymentName
+		// if apicurioRegistry.Status.DeploymentName != "" {
+		// 	registryDeploymentName = apicurioRegistry.Status.DeploymentName
 		// 	return true, nil
 		// }
 		return true, nil
 	})
-	ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", OperatorNamespace)
+	ExecuteCmdOrDie(true, "kubectl", "get", "apicurioregistry", "-n", OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
+
+	var registryReplicas int32 = 1
+	if apicurioRegistry.Status.ReplicaCount != 0 {
+		registryReplicas = apicurioRegistry.Status.ReplicaCount
+	}
 
 	timeout = 180 * time.Second
 	log.Info("Waiting for registry deployment to be ready", "timeout", timeout)
 	err = wait.Poll(APIPollInterval, timeout, func() (bool, error) {
-		labelsSet := labels.Set(map[string]string{"app": "apicurio-registry-" + storage})
+		labelsSet := labels.Set(map[string]string{"app": registryName})
 
 		deployments, err := clientset.AppsV1().Deployments(OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		// registryDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(context.TODO(), registryDeploymentName, metav1.GetOptions{})
@@ -58,7 +64,7 @@ func WaitForRegistryReady(K8sClient client.Client, clientset *kubernetes.Clients
 		}
 		if len(deployments.Items) != 0 {
 			registryDeployment := deployments.Items[0]
-			if registryDeployment.Status.AvailableReplicas > int32(0) {
+			if registryDeployment.Status.AvailableReplicas == registryReplicas {
 				return true, nil
 			}
 		}
@@ -66,10 +72,11 @@ func WaitForRegistryReady(K8sClient client.Client, clientset *kubernetes.Clients
 	})
 	ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
-
+	log.Info("Registry deployment is ready")
 }
 
-func DeleteRegistryAndWait(K8sClient client.Client, clientset *kubernetes.Clientset, registryName string, storage string) {
+//DeleteRegistryAndWait removes one ApicurioRegistry deployment and ensures it's deleted waiting
+func DeleteRegistryAndWait(K8sClient client.Client, clientset *kubernetes.Clientset, registryName string) {
 
 	obj := &apicurio.ApicurioRegistry{}
 	err := K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: OperatorNamespace}, obj)
@@ -95,30 +102,43 @@ func DeleteRegistryAndWait(K8sClient client.Client, clientset *kubernetes.Client
 		}
 		return false, nil
 	})
+	ExecuteCmdOrDie(true, "kubectl", "get", "apicurioregistry", "-n", OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	ExecuteCmdOrDie(true, "kubectl", "get", "apicurioregistry", "-n", OperatorNamespace)
-
 	//TODO operator bug, deployment is not removed
-	// timeout = 30 * time.Second
-	// log.Info("Waiting for registry deployment to be removed", "timeout", timeout)
-	// err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-	// 	labelsSet := labels.Set(map[string]string{"app": "apicurio-registry-" + ctx.Storage})
+	err = waitRegistryDeploymentDeleted(clientset, registryName)
+	if err != nil {
+		log.Info("Verify operator, possible bug, registry deployment is not removed after deleteing ApirucioRegistry CR, manually removing it")
+		labelsSet := labels.Set(map[string]string{"app": registryName})
+		deployments, err := clientset.AppsV1().Deployments(OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(deployments.Items)).To(Equal(1))
+		deployment := deployments.Items[0]
+		err = clientset.AppsV1().Deployments(OperatorNamespace).Delete(deployment.Name, &metav1.DeleteOptions{})
+		Expect(err).ToNot(HaveOccurred())
 
-	// 	deployments, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-	// 	// registryDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(context.TODO(), registryDeploymentName, metav1.GetOptions{})
-	// 	if err != nil {
-	// 		if errors.IsNotFound(err) {
-	// 			return true, nil
-	// 		}
-	// 		return false, err
-	// 	}
-	// 	if len(deployments.Items) == 0 {
-	// 		return true, nil
-	// 	}
-	// 	return false, nil
-	// })
-	// utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
-	// Expect(err).ToNot(HaveOccurred())
+		err = waitRegistryDeploymentDeleted(clientset, registryName)
+		Expect(err).ToNot(HaveOccurred())
+	}
 
+}
+
+func waitRegistryDeploymentDeleted(clientset *kubernetes.Clientset, registryName string) error {
+	timeout := 30 * time.Second
+	log.Info("Waiting for registry deployment to be removed", "timeout", timeout)
+	return wait.Poll(APIPollInterval, timeout, func() (bool, error) {
+		labelsSet := labels.Set(map[string]string{"app": registryName})
+		deployments, err := clientset.AppsV1().Deployments(OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		// registryDeployment, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(context.TODO(), registryDeploymentName, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		if len(deployments.Items) == 0 {
+			return true, nil
+		}
+		return false, nil
+	})
 }

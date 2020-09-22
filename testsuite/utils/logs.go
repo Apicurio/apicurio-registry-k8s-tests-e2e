@@ -54,6 +54,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 	}
 }
 
+//SaveTestPodsLogs stores logs of all pods in OperatorNamespace
 func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testName string) {
 	log.Info("Collecting test logs", "suite", suiteID, "test", testName)
 
@@ -70,20 +71,25 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testName 
 			log.Info("Skipping storing pod logs because pod is not ready", "pod", pod.Name)
 			continue
 		}
-		req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{})
-		podLogs, err := req.Stream()
-		Expect(err).ToNot(HaveOccurred())
-		defer podLogs.Close()
-
-		buf := new(bytes.Buffer)
-		_, err = io.Copy(buf, podLogs)
-		Expect(err).ToNot(HaveOccurred())
-		// str := buf.String()
-
-		logFile := logsDir + pod.Name + ".log"
-		log.Info("Storing pod logs", "file", logFile)
-		//0644
-		err = ioutil.WriteFile(logFile, buf.Bytes(), os.ModePerm)
-		Expect(err).ToNot(HaveOccurred())
+		for _, container := range pod.Status.ContainerStatuses {
+			saveContainerLogs(clientset, logsDir, container.Name, pod)
+		}
 	}
+}
+
+func saveContainerLogs(clientset *kubernetes.Clientset, logsDir string, container string, pod v1.Pod) {
+	req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &v1.PodLogOptions{Container: container})
+	containerLogs, err := req.Stream()
+	Expect(err).ToNot(HaveOccurred())
+	defer containerLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, containerLogs)
+	Expect(err).ToNot(HaveOccurred())
+
+	logFile := logsDir + pod.Name + "-" + container + ".log"
+	log.Info("Storing pod logs", "file", logFile)
+	//0644
+	err = ioutil.WriteFile(logFile, buf.Bytes(), os.ModePerm)
+	Expect(err).ToNot(HaveOccurred())
 }

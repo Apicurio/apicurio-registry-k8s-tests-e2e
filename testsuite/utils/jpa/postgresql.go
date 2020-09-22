@@ -83,7 +83,7 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	err = suiteCtx.K8sClient.Create(context.TODO(), &registry)
 	Expect(err).ToNot(HaveOccurred())
 
-	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
+	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName)
 
 	ctx.RegistryHost = "localhost"
 	ctx.RegistryPort = "80"
@@ -95,7 +95,7 @@ func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
 	Expect(clientset).ToNot(BeNil())
 
-	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
+	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName)
 
 	log.Info("Removing postgresql database")
 

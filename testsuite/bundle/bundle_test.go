@@ -27,9 +27,21 @@ var _ = Describe("functional suite", func() {
 			},
 
 			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
-			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
+			Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
+			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 		)
+
+		// var _ = DescribeTable("kafka connect converters",
+		// 	func(testContext *types.TestContext) {
+		// 		testcase.ExecuteTestOnStorage(suiteCtx, testContext, func() {
+
+		// 		})
+		// 	},
+
+		// 	Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
+		// 	// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
+		// 	// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
+		// )
 
 	})
 
@@ -56,7 +68,7 @@ func installOperator() {
 	bundlePath = file.Name()
 
 	log.Info("Installing operator")
-	utils.ExecuteCmdOrDie(false, "kubectl", "apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
 	utils.WaitForOperatorDeploymentReady(clientset)
 

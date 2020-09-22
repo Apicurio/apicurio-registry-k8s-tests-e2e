@@ -25,6 +25,7 @@ import (
 var log = logf.Log.WithName("streams")
 
 var bundlePath string = utils.OperatorBundlePath
+var kafkaClusterName string = "registry-kafka"
 
 var registryName string
 
@@ -65,13 +66,12 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 	Expect(err).ToNot(HaveOccurred())
 
 	//install kafka CR and topics
-	kafkaClusterName := "registry-kafka"
 	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", utils.SuiteProjectDirValue+"/kubefiles/kafka-cluster.yaml", "-n", utils.OperatorNamespace)
 	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", utils.SuiteProjectDirValue+"/kubefiles/kafka-topics.yaml", "-n", utils.OperatorNamespace)
 
 	//wait for kafka cluster
 	// sh("oc wait deployment/my-cluster-entity-operator --for condition=available --timeout=180s")
-	timeout = 120 * time.Second
+	timeout = 160 * time.Second
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(kafkaClusterName+"-entity-operator", metav1.GetOptions{})
@@ -120,8 +120,10 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 	err = suiteCtx.K8sClient.Create(context.TODO(), &registry)
 	Expect(err).ToNot(HaveOccurred())
 
-	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
+	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName)
 
+	ctx.RegistryHost = "localhost"
+	ctx.RegistryPort = "80"
 }
 
 //RemoveStreamsRegistry uninstalls registry CR, kafka cluster and strimzi operator
@@ -131,23 +133,37 @@ func RemoveStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
 	Expect(clientset).ToNot(BeNil())
 
-	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName, ctx.Storage)
+	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName)
 
 	log.Info("Removing kafka cluster")
 
 	utils.ExecuteCmdOrDie(true, "kubectl", "delete", "-f", utils.SuiteProjectDirValue+"/kubefiles/kafka-cluster.yaml", "-n", utils.OperatorNamespace)
 	utils.ExecuteCmdOrDie(true, "kubectl", "delete", "-f", utils.SuiteProjectDirValue+"/kubefiles/kafka-topics.yaml", "-n", utils.OperatorNamespace)
 
+	timeout := 120 * time.Second
+	log.Info("Waiting for kafka cluster to be removed ", "timeout", timeout)
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		_, err := clientset.AppsV1().StatefulSets(utils.OperatorNamespace).Get(kafkaClusterName+"-kafka", metav1.GetOptions{})
+		// _, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(kafkaClusterName+"-entity-operator", metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
 	utils.ExecuteCmdOrDie(true, "kubectl", "get", "deployment", "-n", utils.OperatorNamespace)
+	utils.ExecuteCmdOrDie(true, "kubectl", "get", "statefulset", "-n", utils.OperatorNamespace)
 	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	Expect(err).ToNot(HaveOccurred())
 
 	log.Info("Removing strimzi operator")
-
 	utils.ExecuteCmdOrDie(false, "kubectl", "delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
-	timeout := 120 * time.Second
-	log.Info("Waiting for strimzi cluster operator to be ready ", "timeout", timeout)
-	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+	timeout = 120 * time.Second
+	log.Info("Waiting for strimzi cluster operator to be removed ", "timeout", timeout)
+	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		_, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {

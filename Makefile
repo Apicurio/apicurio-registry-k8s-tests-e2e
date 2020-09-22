@@ -17,7 +17,7 @@ export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 # CI
 # run-operator-ci: kind-start kind-catalog-source-img pull-apicurio-registry run-operator-tests
 # FIXME ignoring olm for now
-run-operator-ci: kind-start pull-apicurio-registry run-operator-tests
+run-operator-ci: kind-start run-operator-tests
 
 run-apicurio-ci: kind-start kind-setup-operands-img run-apicurio-tests
 
@@ -41,12 +41,11 @@ kind-catalog-source-img: create-catalog-source-image
 	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
 
 kind-setup-operands-img: pull-operator-repo
-	cd apicurio-registry-operator; ./build.sh kubefiles -r "docker.io/apicurio" --operands
-	sed -i "s#apicurio/apicurio-registry-mem:latest-dev#apicurio/apicurio-registry-mem:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
-	sed -i "s#apicurio/apicurio-registry-kafka:latest-dev#apicurio/apicurio-registry-kafka:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
-	sed -i "s#apicurio/apicurio-registry-streams:latest-dev#apicurio/apicurio-registry-streams:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
-	sed -i "s#apicurio/apicurio-registry-jpa:latest-dev#apicurio/apicurio-registry-jpa:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
-	sed -i "s#apicurio/apicurio-registry-infinispan:latest-dev#apicurio/apicurio-registry-infinispan:latest-snapshot#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:latest-snapshot\"#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-kafka.*\"#apicurio/apicurio-registry-kafka:latest-snapshot\"#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-streams.*\"#apicurio/apicurio-registry-streams:latest-snapshot\"#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-jpa.*\"#apicurio/apicurio-registry-jpa:latest-snapshot\"#" ./apicurio-registry-operator/docs/resources/install.yaml
+	sed -i "s#apicurio/apicurio-registry-infinispan.*\"#apicurio/apicurio-registry-infinispan:latest-snapshot\"#" ./apicurio-registry-operator/docs/resources/install.yaml
 
 kind-delete:
 	${KIND_CMD} delete cluster --name ${KIND_CLUSTER_NAME}
@@ -107,8 +106,7 @@ endif
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
-	# git clone https://github.com/Apicurio/apicurio-registry-operator.git
-	git clone --single-branch --branch parametrize-operand-images https://github.com/famartinrh/apicurio-registry-operator.git
+	git clone https://github.com/Apicurio/apicurio-registry-operator.git
 else
 	cd apicurio-registry-operator; git pull
 endif

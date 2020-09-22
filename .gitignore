@@ -4,3 +4,4 @@ TEST-*.xml
 tests-logs
 *.coverprofile
 apicurio-registry
+apicurio-registry-operator

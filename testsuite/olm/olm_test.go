@@ -32,8 +32,8 @@ var _ = Describe("functional suite", func() {
 			},
 
 			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
-			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
+			Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
+			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 		)
 
 	})
