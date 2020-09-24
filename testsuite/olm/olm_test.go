@@ -7,7 +7,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -15,28 +14,15 @@ import (
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
-	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
 	packagev1 "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/apis/operators/v1"
 )
 
-var _ = Describe("functional suite", func() {
+var _ = Describe("olm installation", func() {
 
-	Describe("olm installation", func() {
-
-		var _ = DescribeTable("storage variants matrix",
-			func(testContext *types.TestContext) {
-				testcase.ExecuteTestCase(suiteCtx, testContext)
-			},
-
-			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
-			Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
-		)
-
-	})
+	testcase.CommonTestCases(suiteCtx)
 
 })
 

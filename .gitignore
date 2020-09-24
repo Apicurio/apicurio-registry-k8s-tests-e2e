@@ -5,3 +5,4 @@ tests-logs
 *.coverprofile
 apicurio-registry
 apicurio-registry-operator
+converter-distro.tar.gz

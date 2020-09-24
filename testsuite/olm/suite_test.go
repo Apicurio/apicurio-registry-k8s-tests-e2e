@@ -20,12 +20,13 @@ func init() {
 }
 
 func TestApicurioE2E(t *testing.T) {
-	suite.RunSuite(t, "Operator OLM Testsuite", "olm")
+	suiteCtx = suite.NewSuiteContext("olm")
+	suite.RunSuite(t, "Operator OLM Testsuite", suiteCtx)
 }
 
 var _ = BeforeSuite(func(done Done) {
 
-	suiteCtx = suite.InitSuite("olm")
+	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
 	installOperatorOLM()

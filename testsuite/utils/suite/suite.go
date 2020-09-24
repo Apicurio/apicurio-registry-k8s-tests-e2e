@@ -49,14 +49,24 @@ func SetFlags() {
 	flag.BoolVar(&onlyTestOperator, "only-test-operator", false, "to only test operator installation and registry installation")
 }
 
+//NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
+func NewSuiteContext(suiteID string) *SuiteContext {
+	var suiteCtx SuiteContext = SuiteContext{}
+	suiteCtx.SuiteID = suiteID
+
+	suiteCtx.OnlyTestOperator = onlyTestOperator
+	if suiteCtx.OnlyTestOperator {
+		log.Info("Only testing operator functionality")
+	}
+
+	return &suiteCtx
+}
+
 //InitSuite performs common logic for Ginkgo's BeforeSuite
-func InitSuite(suiteID string) *SuiteContext {
+func InitSuite(suiteCtx *SuiteContext) {
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 	By("bootstrapping test environment")
-
-	var suiteCtx SuiteContext = SuiteContext{}
-	suiteCtx.SuiteID = suiteID
 
 	useCluster := true
 	suiteCtx.testEnv = &envtest.Environment{
@@ -98,7 +108,6 @@ func InitSuite(suiteID string) *SuiteContext {
 	suiteCtx.K8sClient = suiteCtx.k8sManager.GetClient()
 	Expect(suiteCtx.K8sClient).ToNot(BeNil())
 
-	return &suiteCtx
 }
 
 //TearDownSuite performs common logic for Ginkgo's AfterSuite
@@ -110,7 +119,7 @@ func TearDownSuite(suiteCtx *SuiteContext) {
 }
 
 //RunSuite starts the execution of a test suite
-func RunSuite(t *testing.T, suiteName string, suiteID string) {
+func RunSuite(t *testing.T, suiteName string, suiteCtx *SuiteContext) {
 
 	if utils.SuiteProjectDirValue == "" {
 		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
@@ -122,7 +131,7 @@ func RunSuite(t *testing.T, suiteName string, suiteID string) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDirValue+"/tests-logs/"+suiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
+	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDirValue+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
 		[]Reporter{printer.NewlineReporter{}, junitReporter},

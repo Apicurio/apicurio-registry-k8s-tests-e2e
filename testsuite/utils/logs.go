@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
@@ -45,7 +46,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 		Expect(err).ToNot(HaveOccurred())
 		// str := buf.String()
 
-		logsDir := SuiteProjectDirValue + "/tests-logs/" + suiteID + "/namespaces/" + pod.Namespace + "/"
+		logsDir := SuiteProjectDirValue + "/tests-logs/" + suiteID + "/operator/namespaces/" + pod.Namespace + "/"
 		os.MkdirAll(logsDir, os.ModePerm)
 		logFile := logsDir + pod.Name + ".log"
 		log.Info("Storing operator logs", "file", logFile)
@@ -55,7 +56,14 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 }
 
 //SaveTestPodsLogs stores logs of all pods in OperatorNamespace
-func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testName string) {
+func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testDescription ginkgo.GinkgoTestDescription) {
+
+	testName := ""
+	for _, comp := range testDescription.ComponentTexts {
+		testName += (comp + "-")
+	}
+	testName = testName[0 : len(testName)-1]
+
 	log.Info("Collecting test logs", "suite", suiteID, "test", testName)
 
 	pods, err := clientset.CoreV1().Pods(OperatorNamespace).List(metav1.ListOptions{})

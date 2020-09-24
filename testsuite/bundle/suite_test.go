@@ -20,12 +20,13 @@ func init() {
 }
 
 func TestApicurioE2E(t *testing.T) {
-	suite.RunSuite(t, "Operator Bundle Testsuite", "bundle")
+	suiteCtx = suite.NewSuiteContext("bundle")
+	suite.RunSuite(t, "Operator Bundle Testsuite", suiteCtx)
 }
 
 var _ = BeforeSuite(func(done Done) {
 
-	suiteCtx = suite.InitSuite("bundle")
+	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
 	installOperator()

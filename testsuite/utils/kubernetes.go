@@ -99,3 +99,25 @@ func isOperatorDeployed(clientset *kubernetes.Clientset) (bool, error) {
 	}
 	return false, nil
 }
+
+func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Duration, deploymentName string, expectedReplicas int) {
+	if expectedReplicas == 0 {
+		expectedReplicas = 1
+	}
+	// timeout := 120 * time.Second
+	log.Info("Waiting for deployment "+deploymentName+" to be ready ", "timeout", timeout)
+	err := wait.Poll(APIPollInterval, timeout, func() (bool, error) {
+		od, err := clientset.AppsV1().Deployments(OperatorNamespace).Get(deploymentName, metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return false, err
+		}
+		if od != nil {
+			if od.Status.AvailableReplicas == int32(expectedReplicas) {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", OperatorNamespace)
+	Expect(err).ToNot(HaveOccurred())
+}

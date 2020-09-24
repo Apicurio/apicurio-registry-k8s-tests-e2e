@@ -9,41 +9,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
-	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
-var _ = Describe("functional suite", func() {
+var _ = Describe("bundle installation", func() {
 
-	Describe("bundle installation", func() {
-
-		var _ = DescribeTable("storage variants matrix",
-			func(testContext *types.TestContext) {
-				testcase.ExecuteTestCase(suiteCtx, testContext)
-			},
-
-			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
-			Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
-		)
-
-		// var _ = DescribeTable("kafka connect converters",
-		// 	func(testContext *types.TestContext) {
-		// 		testcase.ExecuteTestOnStorage(suiteCtx, testContext, func() {
-
-		// 		})
-		// 	},
-
-		// 	Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
-		// 	// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-		// 	// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
-		// )
-
-	})
+	testcase.CommonTestCases(suiteCtx)
 
 })
 
