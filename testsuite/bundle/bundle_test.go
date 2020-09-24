@@ -50,7 +50,9 @@ func installOperator() {
 
 func uninstallOperator() {
 
-	defer os.Remove(bundlePath)
+	if strings.HasPrefix(bundlePath, "/tmp/") {
+		defer os.Remove(bundlePath)
+	}
 
 	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
 	Expect(clientset).ToNot(BeNil())

@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -130,7 +128,7 @@ func ConvertersTestCase(k8sclient client.Client, clientset *kubernetes.Clientset
 
 	artifactsRes, err := http.Get(apicurioURL + "artifacts")
 	Expect(err).ToNot(HaveOccurred())
-	artifactsStr := readerToString(artifactsRes.Body)
+	artifactsStr := utils.ReaderToString(artifactsRes.Body)
 	log.Info("Artifacts after debezium are " + artifactsStr)
 
 	kafkaConsumer.Unsubscribe()
@@ -200,7 +198,7 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 	Expect(err).ToNot(HaveOccurred())
 	Expect(res.StatusCode >= 200 && res.StatusCode <= 299).To(BeTrue())
 	log.Info("Create connector response is " + res.Status)
-	log.Info("Create connector response is " + readerToString(res.Body))
+	log.Info("Create connector response is " + utils.ReaderToString(res.Body))
 
 	log.Info("Waiting for debezium connector to be configured")
 	timeout := 45 * time.Second
@@ -211,7 +209,7 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 		}
 		if res.StatusCode >= 200 && res.StatusCode <= 299 {
 			log.Info("Status code is " + res.Status)
-			log.Info("Debezium connector is " + readerToString(res.Body))
+			log.Info("Debezium connector is " + utils.ReaderToString(res.Body))
 			return true, nil
 		}
 		return false, nil
@@ -365,11 +363,4 @@ func debeziumIngress() *v1beta1.Ingress {
 			},
 		},
 	}
-}
-
-func readerToString(reader io.Reader) string {
-	str := new(strings.Builder)
-	_, err := io.Copy(str, reader)
-	Expect(err).ToNot(HaveOccurred())
-	return str.String()
 }

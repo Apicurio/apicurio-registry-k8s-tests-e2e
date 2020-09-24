@@ -4,6 +4,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+
+	. "github.com/onsi/gomega"
 )
 
 func DownloadFile(filepath string, url string) error {
@@ -25,4 +28,11 @@ func DownloadFile(filepath string, url string) error {
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
 	return err
+}
+
+func ReaderToString(reader io.Reader) string {
+	str := new(strings.Builder)
+	_, err := io.Copy(str, reader)
+	Expect(err).ToNot(HaveOccurred())
+	return str.String()
 }

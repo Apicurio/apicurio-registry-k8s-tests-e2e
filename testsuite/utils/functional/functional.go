@@ -50,11 +50,15 @@ func BasicRegistryAPITest(ctx *types.TestContext) {
 
 	log.Info("Testing registry API")
 	timeout := 60 * time.Second
+	statusCode := ""
+	body := ""
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		res, err := http.Get("http://" + ctx.RegistryHost + ":" + ctx.RegistryPort + "/api/artifacts")
 		if err != nil {
 			return false, err
 		}
+		statusCode = res.Status
+		body = utils.ReaderToString(res.Body)
 		if res.StatusCode != 200 {
 			return false, nil
 		}
@@ -63,6 +67,8 @@ func BasicRegistryAPITest(ctx *types.TestContext) {
 	})
 	if err != nil {
 		log.Info("Registry API verification failed with error")
+		log.Info("Status " + statusCode)
+		log.Info("Response " + body)
 	}
 	Expect(err).NotTo(HaveOccurred())
 	log.Info("Successful registry API verification")
