@@ -49,7 +49,7 @@ func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
 func BasicRegistryAPITest(ctx *types.TestContext) {
 
 	log.Info("Testing registry API")
-	timeout := 30 * time.Second
+	timeout := 60 * time.Second
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		res, err := http.Get("http://" + ctx.RegistryHost + ":" + ctx.RegistryPort + "/api/artifacts")
 		if err != nil {
