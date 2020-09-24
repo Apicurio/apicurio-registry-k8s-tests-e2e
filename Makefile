@@ -66,7 +66,7 @@ else
 	@echo "Creating Cluster"
 	./scripts/start-kind-image-registry.sh
 	# create a cluster with the local registry enabled in containerd
-	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --config=./scripts/kind-config.yaml
+	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.17.5 --config=./scripts/kind-config.yaml
 	./scripts/setup-kind-image-registry.sh
 	# setup ingress
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
@@ -115,6 +115,9 @@ ifeq (,$(wildcard ./apicurio-registry))
 else
 	cd apicurio-registry; git pull
 endif
+
+build-apicurio-registry:
+	cd apicurio-registry; mvn package -DskipTests -pl '!tests'
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))

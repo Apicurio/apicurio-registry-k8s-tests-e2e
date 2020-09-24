@@ -139,20 +139,16 @@ func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 	err = k8sclient.Delete(context.TODO(), postgresqlService(name))
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 30 * time.Second
-	log.Info("Waiting for postgresql database to be removed ", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return true, nil
-			}
-			return false, err
-		}
-		return false, nil
+	utils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
+		return clientset.CoreV1().PersistentVolumeClaims(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+	})
+	utils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
+		return clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+	})
+	utils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
+		return clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
 	})
 	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
-	Expect(err).ToNot(HaveOccurred())
 }
 
 func postgresqlDeployment(name string, database string, user string, password string) *v1.Deployment {

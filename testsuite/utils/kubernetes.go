@@ -121,3 +121,19 @@ func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Durati
 	ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 }
+
+func WaitForObjectDeleted(name string, apiCall func() (interface{}, error)) {
+	timeout := 30 * time.Second
+	log.Info("Waiting for "+name+" to be removed ", "timeout", timeout)
+	err := wait.Poll(APIPollInterval, timeout, func() (bool, error) {
+		_, err := apiCall()
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+	Expect(err).ToNot(HaveOccurred())
+}
