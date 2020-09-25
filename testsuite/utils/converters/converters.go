@@ -18,12 +18,13 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
+	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -38,7 +39,7 @@ var databaseName = "test-db"
 var databaseUser = "testuser"
 var databasePassword = "testpwd"
 
-func ConvertersTestCase(k8sclient client.Client, clientset *kubernetes.Clientset, testContext *types.TestContext) {
+func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
 	apicurioURL := "http://" + testContext.RegistryHost + ":" + testContext.RegistryPort + "/api/"
 
 	oldDir, err := os.Getwd()
@@ -51,27 +52,27 @@ func ConvertersTestCase(k8sclient client.Client, clientset *kubernetes.Clientset
 	apicurioDebeziumImage := "localhost:5000/apicurio-debezium:latest"
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(clientset, 1, kafkaClusterName, []string{})
+	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(suiteCtx.Clientset, 1, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
-			streams.RemoveKafkaCluster(clientset, kafkaClusterName, []string{})
-			streams.RemoveStrimziOperator(clientset)
+			streams.RemoveKafkaCluster(suiteCtx.Clientset, kafkaClusterName, []string{})
+			streams.RemoveStrimziOperator(suiteCtx.Clientset)
 		}
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
 
-	jpa.DeployPostgresqlDatabase(k8sclient, clientset, databaseName, databaseName, databaseUser, databasePassword)
+	jpa.DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
-		jpa.RemovePostgresqlDatabase(k8sclient, clientset, databaseName)
+		jpa.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, databaseName)
 	}
 	testContext.RegisterCleanup(postgresCleanup)
 
 	log.Info("Deploying debezium")
-	err = k8sclient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
+	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
 	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Create(context.TODO(), debeziumService())
+	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService())
 	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Create(context.TODO(), debeziumIngress())
+	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumIngress(suiteCtx))
 	Expect(err).ToNot(HaveOccurred())
 
 	//TODO adapt this to work on openshift
@@ -79,18 +80,18 @@ func ConvertersTestCase(k8sclient client.Client, clientset *kubernetes.Clientset
 
 	debeziumCleanup := func() {
 		log.Info("Removing debezium")
-		err := k8sclient.Delete(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
+		err := suiteCtx.K8sClient.Delete(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
 		Expect(err).ToNot(HaveOccurred())
-		err = k8sclient.Delete(context.TODO(), debeziumService())
+		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService())
 		Expect(err).ToNot(HaveOccurred())
-		err = k8sclient.Delete(context.TODO(), debeziumIngress())
+		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumIngress(nil))
 		Expect(err).ToNot(HaveOccurred())
 	}
 	testContext.RegisterCleanup(debeziumCleanup)
 
-	utils.WaitForDeploymentReady(clientset, 120*time.Second, debeziumName, 1)
+	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, debeziumName, 1)
 
-	postgresqlPodName := jpa.GetPostgresqlDatabasePod(clientset, databaseName).Name
+	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, databaseName).Name
 	executeSQL(postgresqlPodName, databaseName, "drop schema if exists todo cascade")
 	executeSQL(postgresqlPodName, databaseName, "create schema todo")
 	executeSQL(postgresqlPodName, databaseName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
@@ -218,7 +219,7 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 }
 
 func executeSQL(podName string, databaseName string, sql string) {
-	utils.ExecuteCmdOrDie(true, "kubectl", "exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
+	kubernetescli.Execute("exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
 }
 
 func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {
@@ -331,8 +332,8 @@ func debeziumService() *corev1.Service {
 	}
 }
 
-func debeziumIngress() *v1beta1.Ingress {
-	return &v1beta1.Ingress{
+func debeziumIngress(suite *suite.SuiteContext) *v1beta1.Ingress {
+	ingress := &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
@@ -344,8 +345,6 @@ func debeziumIngress() *v1beta1.Ingress {
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
-					//TODO detect if cluster is kind and do this workaround only in that case
-					Host: "localhost",
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
@@ -363,4 +362,9 @@ func debeziumIngress() *v1beta1.Ingress {
 			},
 		},
 	}
+	if suite != nil && !suite.IsOpenshift {
+		//this is just a workaround to make it work with Kind nginx ingress
+		ingress.Spec.Rules[0].Host = "localhost"
+	}
+	return ingress
 }

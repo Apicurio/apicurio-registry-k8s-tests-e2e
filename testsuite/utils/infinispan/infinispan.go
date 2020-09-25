@@ -1,14 +1,11 @@
 package infinispan
 
 import (
-	"context"
-
-	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
@@ -31,10 +28,6 @@ func DeployInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestConte
 			Name:      registryName,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
-			Deployment: apicurio.ApicurioRegistrySpecDeployment{
-				//TODO detect if cluster is kind and do this workaround only in that case
-				Host: "localhost",
-			},
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageInfinispan,
@@ -45,24 +38,13 @@ func DeployInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestConte
 		},
 	}
 
-	err := suiteCtx.K8sClient.Create(context.TODO(), &registry)
-	Expect(err).ToNot(HaveOccurred())
+	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
-	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName)
-
-	ctx.RegistryHost = "localhost"
-	ctx.RegistryPort = "80"
 }
 
 //RemoveInfinispanRegistry uninstalls registry CR
 func RemoveInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
-	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, registryName)
 
 }

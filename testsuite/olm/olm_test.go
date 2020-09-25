@@ -10,9 +10,9 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
@@ -34,10 +34,8 @@ const catalogSourceNamespace string = utils.OperatorNamespace
 var operatorCSV string
 
 func installOperatorOLM() {
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
 
-	utils.CreateTestNamespace(clientset, utils.OperatorNamespace)
+	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
 
 	//catalog-source
 	_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Create(&operatorsv1alpha1.CatalogSource{
@@ -132,16 +130,13 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	utils.WaitForOperatorDeploymentReady(clientset)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset)
 
 }
 
 func uninstallOperatorOLM() {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
-	utils.SaveOperatorLogs(clientset, suiteCtx.SuiteID)
+	utils.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
 
 	log.Info("Uninstalling operator")
 
@@ -154,7 +149,7 @@ func uninstallOperatorOLM() {
 		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(utils.OperatorNamespace).Delete(operatorCSV, &metav1.DeleteOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
-		utils.WaitForOperatorDeploymentRemoved(clientset)
+		kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset)
 	}
 
 	err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(utils.OperatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
@@ -167,6 +162,6 @@ func uninstallOperatorOLM() {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	utils.DeleteTestNamespace(clientset, utils.OperatorNamespace)
+	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
 
 }
