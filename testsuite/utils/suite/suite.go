@@ -10,6 +10,7 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,7 +18,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
+	ocp_apps_client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
+	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
+
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -38,6 +44,13 @@ type SuiteContext struct {
 	testEnv       *envtest.Environment
 	PackageClient pmversioned.Interface
 	OLMClient     olmapiversioned.Interface
+	Clientset     *kubernetes.Clientset
+	IsOpenshift   bool
+
+	OcpAppsClient  *ocp_apps_client.AppsV1Client
+	OcpRouteClient *ocp_route_client.RouteV1Client
+
+	CLIKubernetesClient *kubernetescli.KubernetesClient
 
 	OnlyTestOperator bool
 }
@@ -88,10 +101,10 @@ func InitSuite(suiteCtx *SuiteContext) {
 
 	suiteCtx.OLMClient = olmapiversioned.NewForConfigOrDie(suiteCtx.Cfg)
 
-	suiteCtx.OnlyTestOperator = onlyTestOperator
-	if suiteCtx.OnlyTestOperator {
-		log.Info("Only testing operator functionality")
-	}
+	// suiteCtx.OnlyTestOperator = onlyTestOperator
+	// if suiteCtx.OnlyTestOperator {
+	// 	log.Info("Only testing operator functionality")
+	// }
 
 	//
 
@@ -107,6 +120,25 @@ func InitSuite(suiteCtx *SuiteContext) {
 
 	suiteCtx.K8sClient = suiteCtx.k8sManager.GetClient()
 	Expect(suiteCtx.K8sClient).ToNot(BeNil())
+
+	suiteCtx.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
+	Expect(suiteCtx.Clientset).ToNot(BeNil())
+
+	isocp, err := kubernetesutils.IsOCP(suiteCtx.Cfg)
+	Expect(err).ToNot(HaveOccurred())
+	suiteCtx.IsOpenshift = isocp
+
+	if suiteCtx.IsOpenshift {
+		suiteCtx.OcpAppsClient = ocp_apps_client.NewForConfigOrDie(suiteCtx.Cfg)
+		suiteCtx.OcpRouteClient = ocp_route_client.NewForConfigOrDie(suiteCtx.Cfg)
+	}
+
+	cmd := kubernetescli.Kubectl
+	if suiteCtx.IsOpenshift {
+		cmd = kubernetescli.Oc
+	}
+	suiteCtx.CLIKubernetesClient = kubernetescli.NewCLIKubernetesClient(cmd)
+	Expect(suiteCtx.CLIKubernetesClient).ToNot(BeNil())
 
 }
 

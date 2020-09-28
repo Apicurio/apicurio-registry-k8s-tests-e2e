@@ -2,4 +2,4 @@
 set -e
 echo "Collecting tests logs"
 mkdir -p artifacts
-cp -r apicurio-registry-k8s-tests-e2e/tests-logs artifacts 
+cp -r tests-logs artifacts

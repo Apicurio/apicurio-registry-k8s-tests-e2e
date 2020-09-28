@@ -8,7 +8,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
@@ -61,9 +60,7 @@ func executeTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContex
 
 func executeConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
 	executeTestOnStorage(suiteCtx, testContext, func() {
-		var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-		Expect(clientset).ToNot(BeNil())
-		converters.ConvertersTestCase(suiteCtx.K8sClient, clientset, testContext)
+		converters.ConvertersTestCase(suiteCtx, testContext)
 	})
 }
 
@@ -97,11 +94,8 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 
 	log.Info("-----------------------------------------------------------")
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
 	testDescription := CurrentGinkgoTestDescription()
-	utils.SaveTestPodsLogs(clientset, suiteCtx.SuiteID, testDescription)
+	utils.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
 
 	ctx.ExecuteCleanups()
 

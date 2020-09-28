@@ -1,7 +1,6 @@
 package streams
 
 import (
-	"context"
 	"math/rand"
 	"os"
 	"strconv"
@@ -16,6 +15,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
@@ -33,8 +34,7 @@ var registryName string
 //DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
 func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
+	var clientset *kubernetes.Clientset = suiteCtx.Clientset
 
 	kafkaClusterInfo := DeployKafkaCluster(clientset, 3, registryKafkaClusterName, registryKafkaTopics)
 
@@ -49,10 +49,6 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 			Name:      registryName,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
-			Deployment: apicurio.ApicurioRegistrySpecDeployment{
-				//TODO detect if cluster is kind and do this workaround only in that case
-				Host: "localhost",
-			},
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageStreams,
@@ -64,13 +60,8 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 		},
 	}
 
-	err := suiteCtx.K8sClient.Create(context.TODO(), &registry)
-	Expect(err).ToNot(HaveOccurred())
+	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
 
-	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName)
-
-	ctx.RegistryHost = "localhost"
-	ctx.RegistryPort = "80"
 }
 
 //RemoveStreamsRegistry uninstalls registry CR, kafka cluster and strimzi operator
@@ -78,14 +69,13 @@ func RemoveStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 
 	defer os.Remove(bundlePath)
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, registryName)
 
-	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName)
+	RemoveKafkaCluster(suiteCtx.Clientset, registryKafkaClusterName, registryKafkaTopics)
 
-	RemoveKafkaCluster(clientset, registryKafkaClusterName, registryKafkaTopics)
+	RemoveStrimziOperator(suiteCtx.Clientset)
 
-	RemoveStrimziOperator(clientset)
+	//TODO wait properly to cleanup
 
 }
 
@@ -115,7 +105,7 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 	kafkaClusterManifest := kafkaClusterManifestFile.Name()
 
 	log.Info("Deploying kafka cluster " + name)
-	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", kafkaClusterManifest, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", utils.OperatorNamespace)
 
 	for _, topic := range topics {
 		kafkaTopicManifestFile := utils.Template("kafka-topic-"+topic,
@@ -129,7 +119,7 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 		kafkaTopicManifest := kafkaTopicManifestFile.Name()
 
 		log.Info("Deploying kafka topic " + topic)
-		utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", kafkaTopicManifest, "-n", utils.OperatorNamespace)
+		kubernetescli.Execute("apply", "-f", kafkaTopicManifest, "-n", utils.OperatorNamespace)
 	}
 
 	//wait for kafka cluster
@@ -148,8 +138,8 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 		}
 		return false, nil
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "deployment", "-n", utils.OperatorNamespace)
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetDeployments(utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
 	svc, err := clientset.CoreV1().Services(utils.OperatorNamespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
@@ -178,7 +168,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
 		//TODO implement installing strimzi from local directory
 	}
 
-	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
 	// sh("oc wait deployment/strimzi-cluster-operator --for condition=available --timeout=180s")
 	timeout := 120 * time.Second
@@ -195,7 +185,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
 		}
 		return false, nil
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 	return true
 }
@@ -205,9 +195,9 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 
 	log.Info("Removing kafka cluster")
 
-	utils.ExecuteCmdOrDie(true, "kubectl", "delete", "kafka", name, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("delete", "kafka", name, "-n", utils.OperatorNamespace)
 	for _, topic := range topics {
-		utils.ExecuteCmdOrDie(true, "kubectl", "delete", "kafkatopic", topic, "-n", utils.OperatorNamespace)
+		kubernetescli.Execute("delete", "kafkatopic", topic, "-n", utils.OperatorNamespace)
 	}
 
 	timeout := 120 * time.Second
@@ -223,9 +213,9 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 		}
 		return false, nil
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "deployment", "-n", utils.OperatorNamespace)
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "statefulset", "-n", utils.OperatorNamespace)
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetDeployments(utils.OperatorNamespace)
+	kubernetescli.GetStatefulSets(utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
 }
@@ -233,7 +223,7 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 //RemoveStrimziOperator uninstalls strimzi operator
 func RemoveStrimziOperator(clientset *kubernetes.Clientset) {
 	log.Info("Removing strimzi operator")
-	utils.ExecuteCmdOrDie(false, "kubectl", "delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi cluster operator to be removed ", "timeout", timeout)
@@ -247,7 +237,7 @@ func RemoveStrimziOperator(clientset *kubernetes.Clientset) {
 		}
 		return false, nil
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "deployment", "-n", utils.OperatorNamespace)
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetDeployments(utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 }

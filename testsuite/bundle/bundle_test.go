@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/client-go/kubernetes"
-
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 )
 
@@ -25,10 +24,7 @@ var bundlePath string = utils.OperatorBundlePath
 
 func installOperator() {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
-	utils.CreateTestNamespace(clientset, utils.OperatorNamespace)
+	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
 
 	if strings.HasPrefix(utils.OperatorBundlePath, "https://") {
 		bundlePath = "/tmp/apicurio-operator-bundle-" + strconv.Itoa(rand.Intn(1000)) + ".yaml"
@@ -42,9 +38,9 @@ func installOperator() {
 	bundlePath = file.Name()
 
 	log.Info("Installing operator")
-	utils.ExecuteCmdOrDie(true, "kubectl", "apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
-	utils.WaitForOperatorDeploymentReady(clientset)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset)
 
 }
 
@@ -54,16 +50,13 @@ func uninstallOperator() {
 		defer os.Remove(bundlePath)
 	}
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
-	utils.SaveOperatorLogs(clientset, suiteCtx.SuiteID)
+	utils.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
 
 	log.Info("Uninstalling operator")
-	utils.ExecuteCmdOrDie(false, "kubectl", "delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
 
-	utils.WaitForOperatorDeploymentRemoved(clientset)
+	kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset)
 
-	utils.DeleteTestNamespace(clientset, utils.OperatorNamespace)
+	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
 
 }

@@ -8,6 +8,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
+	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	suite "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	types "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
@@ -34,12 +37,9 @@ var registryName string
 //DeployJpaRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
 func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
-
 	user := "apicurio-registry"
 	password := "password"
-	dataSourceURL := DeployPostgresqlDatabase(suiteCtx.K8sClient, clientset, registryPostgresqlName, "apicurio-registry", user, password)
+	dataSourceURL := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, registryPostgresqlName, "apicurio-registry", user, password)
 
 	log.Info("Deploying apicurio registry")
 
@@ -50,10 +50,6 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 			Name:      registryName,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
-			Deployment: apicurio.ApicurioRegistrySpecDeployment{
-				//TODO detect if cluster is kind and do this workaround only in that case
-				Host: "localhost",
-			},
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageJpa,
@@ -66,24 +62,16 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 		},
 	}
 
-	err := suiteCtx.K8sClient.Create(context.TODO(), &registry)
-	Expect(err).ToNot(HaveOccurred())
+	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
 
-	utils.WaitForRegistryReady(suiteCtx.K8sClient, clientset, registryName)
-
-	ctx.RegistryHost = "localhost"
-	ctx.RegistryPort = "80"
 }
 
 //RemoveJpaRegistry uninstalls registry CR and postgresql database
 func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
-	var clientset *kubernetes.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
-	Expect(clientset).ToNot(BeNil())
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, registryName)
 
-	utils.DeleteRegistryAndWait(suiteCtx.K8sClient, clientset, registryName)
-
-	RemovePostgresqlDatabase(suiteCtx.K8sClient, clientset, registryPostgresqlName)
+	RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, registryPostgresqlName)
 
 }
 
@@ -112,7 +100,7 @@ func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 		}
 		return false, nil
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
 	svc, err := clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
@@ -139,16 +127,16 @@ func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 	err = k8sclient.Delete(context.TODO(), postgresqlService(name))
 	Expect(err).ToNot(HaveOccurred())
 
-	utils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
+	kubernetesutils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
 		return clientset.CoreV1().PersistentVolumeClaims(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
 	})
-	utils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
+	kubernetesutils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
 		return clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
 	})
-	utils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
+	kubernetesutils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
 		return clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
 	})
-	utils.ExecuteCmdOrDie(true, "kubectl", "get", "pod", "-n", utils.OperatorNamespace)
+	kubernetescli.GetPods(utils.OperatorNamespace)
 }
 
 func postgresqlDeployment(name string, database string, user string, password string) *v1.Deployment {
