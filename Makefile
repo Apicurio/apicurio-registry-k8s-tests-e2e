@@ -117,7 +117,7 @@ else
 endif
 
 build-apicurio-registry:
-	cd apicurio-registry; mvn package -DskipTests -pl '!tests'
+	cd apicurio-registry; mvn package -DskipTests -pl '!tests' --no-transfer-progress
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
