@@ -89,6 +89,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *suite.SuiteContext, ctx *types.Te
 	err = suiteCtx.K8sClient.Create(context.TODO(), dbplaygroundDeployment(dbplaygroundImage))
 	Expect(err).ToNot(HaveOccurred())
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, "dbplayground", 1)
+	time.Sleep(3 * time.Second)
 	labelsSet := labels.Set(dbplaygroundlabels)
 	podList, err := suiteCtx.Clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
