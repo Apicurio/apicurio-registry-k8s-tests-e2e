@@ -39,7 +39,7 @@ func DeployJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
 	user := "apicurio-registry"
 	password := "password"
-	dataSourceURL := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, registryPostgresqlName, "apicurio-registry", user, password)
+	dataSourceURL := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, registryPostgresqlName, "apicurio-registry", user, password).DataSourceURL
 
 	log.Info("Deploying apicurio registry")
 
@@ -75,8 +75,18 @@ func RemoveJpaRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
 }
 
+type DbData struct {
+	Name          string
+	Host          string
+	Port          string
+	Database      string
+	User          string
+	Password      string
+	DataSourceURL string
+}
+
 //DeployPostgresqlDatabase deploys a postgresql database
-func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Clientset, name string, database string, user string, password string) string {
+func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Clientset, name string, database string, user string, password string) *DbData {
 	log.Info("Deploying postgresql database " + name)
 
 	err := k8sclient.Create(context.TODO(), postgresqlPersistentVolumeClaim(name))
@@ -105,7 +115,17 @@ func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 
 	svc, err := clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
-	return "jdbc:postgresql://" + svc.Spec.ClusterIP + ":5432/"
+	dbdata := &DbData{
+		Name:          name,
+		DataSourceURL: "jdbc:postgresql://" + svc.Spec.ClusterIP + ":5432/" + database,
+		Host:          svc.Spec.ClusterIP,
+		Port:          "5432",
+		Database:      database,
+		User:          user,
+		Password:      password,
+	}
+	return dbdata
+	// return "jdbc:postgresql://" + svc.Spec.ClusterIP + ":5432/" + database
 }
 
 //GetPostgresqlDatabasePod gets the database pod from the name given when created
@@ -120,22 +140,39 @@ func GetPostgresqlDatabasePod(clientset *kubernetes.Clientset, name string) *cor
 func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Clientset, name string) {
 	log.Info("Removing postgresql database " + name)
 
-	err := k8sclient.Delete(context.TODO(), postgresqlPersistentVolumeClaim(name))
-	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Delete(context.TODO(), postgresqlDeployment(name, "", "", ""))
-	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Delete(context.TODO(), postgresqlService(name))
-	Expect(err).ToNot(HaveOccurred())
+	dep, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+	if err == nil {
+		err = k8sclient.Delete(context.TODO(), dep)
+		Expect(err).ToNot(HaveOccurred())
+		kubernetesutils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
+			return clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+		})
+	} else if !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
 
-	kubernetesutils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
-		return clientset.CoreV1().PersistentVolumeClaims(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
-	})
-	kubernetesutils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
-		return clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
-	})
-	kubernetesutils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
-		return clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
-	})
+	pvc, err := clientset.CoreV1().PersistentVolumeClaims(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+	if err == nil {
+		err = k8sclient.Delete(context.TODO(), pvc)
+		Expect(err).ToNot(HaveOccurred())
+		kubernetesutils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
+			return clientset.CoreV1().PersistentVolumeClaims(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+		})
+	} else if !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+
+	svc, err := clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+	if err == nil {
+		err = k8sclient.Delete(context.TODO(), svc)
+		Expect(err).ToNot(HaveOccurred())
+		kubernetesutils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
+			return clientset.CoreV1().Services(utils.OperatorNamespace).Get(name, metav1.GetOptions{})
+		})
+	} else if !errors.IsNotFound(err) {
+		Expect(err).ToNot(HaveOccurred())
+	}
+
 	kubernetescli.GetPods(utils.OperatorNamespace)
 }
 
@@ -161,7 +198,7 @@ func postgresqlDeployment(name string, database string, user string, password st
 					Containers: []corev1.Container{
 						{
 							Name:  name,
-							Image: "centos/postgresql-10-centos7",
+							Image: "centos/postgresql-10-centos7:20200917-804ef01",
 							Env: []corev1.EnvVar{
 								{
 									Name:  "POSTGRESQL_ADMIN_PASSWORD",

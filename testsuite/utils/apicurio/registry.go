@@ -201,3 +201,16 @@ func waitRegistryDeploymentDeleted(suiteCtx *suite.SuiteContext, registryName st
 		return false, nil
 	})
 }
+
+//ExistsRegistry verifies if the ApicurioRegistry CR named registryName exists
+func ExistsRegistry(suiteCtx *suite.SuiteContext, registryName string) bool {
+	obj := &apicurio.ApicurioRegistry{}
+	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace}, obj)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false
+		}
+		Expect(err).ToNot(HaveOccurred())
+	}
+	return obj.Name == registryName
+}

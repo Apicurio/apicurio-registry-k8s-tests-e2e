@@ -45,6 +45,12 @@ func CommonTestCases(suiteCtx *suite.SuiteContext) {
 		)
 	}
 
+	var _ = It("backup and restore", func() {
+		ctx := &types.TestContext{}
+		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+	})
+
 }
 
 //ExecuteTestCase common logic to test operator deploying an instance of ApicurioRegistry with one of it's storage variants
@@ -94,10 +100,7 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 
 	log.Info("-----------------------------------------------------------")
 
-	testDescription := CurrentGinkgoTestDescription()
-	utils.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
-
-	ctx.ExecuteCleanups()
+	saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 
 	if ctx.Storage == utils.StorageJpa {
 		jpa.RemoveJpaRegistry(suiteCtx, ctx)
@@ -110,4 +113,11 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 	}
 
 	return nil
+}
+
+func saveLogsAndExecuteTestCleanups(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+	testDescription := CurrentGinkgoTestDescription()
+	utils.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
+
+	ctx.ExecuteCleanups()
 }

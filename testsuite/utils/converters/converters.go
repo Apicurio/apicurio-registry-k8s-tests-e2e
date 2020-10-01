@@ -49,6 +49,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}})
 	os.Chdir(oldDir)
 
+	//TODO make this work on openshift
 	apicurioDebeziumImage := "localhost:5000/apicurio-debezium:latest"
 
 	kafkaClusterName := "test-debezium-kafka"
