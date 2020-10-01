@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -203,7 +204,9 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 	timeout := 120 * time.Second
 	log.Info("Waiting for kafka cluster to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.AppsV1().StatefulSets(utils.OperatorNamespace).Get(name+"-kafka", metav1.GetOptions{})
+		labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": name})
+		l, err := clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		// _, err := clientset.AppsV1().StatefulSets(utils.OperatorNamespace).Get(name+"-kafka", metav1.GetOptions{})
 		// _, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(registryKafkaClusterName+"-entity-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -211,7 +214,7 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 			}
 			return false, err
 		}
-		return false, nil
+		return len(l.Items) == 0, nil
 	})
 	kubernetescli.GetDeployments(utils.OperatorNamespace)
 	kubernetescli.GetStatefulSets(utils.OperatorNamespace)
