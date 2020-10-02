@@ -89,14 +89,14 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *suite.SuiteContext, ctx *types.Te
 	err = suiteCtx.K8sClient.Create(context.TODO(), dbplaygroundDeployment(dbplaygroundImage))
 	Expect(err).ToNot(HaveOccurred())
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, "dbplayground", 1)
-	time.Sleep(10 * time.Second)
+	time.Sleep(2 * time.Second)
 	labelsSet := labels.Set(dbplaygroundlabels)
 	podList, err := suiteCtx.Clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
 	dbplaygroundPodName := podList.Items[0].Name
 
 	// create the backup
-	kubernetescli.Execute("exec", dbplaygroundPodName, "--", "./create_backup.sh", backupDBData.Host, backupDBData.Port, backupDBData.Database, backupDBData.User, backupDBData.Password)
+	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", dbplaygroundPodName, "--", "./create_backup.sh", backupDBData.Host, backupDBData.Port, backupDBData.Database, backupDBData.User, backupDBData.Password)
 	log.Info("Backup performed successfully")
 
 	// shut down the registry and the first db
@@ -110,7 +110,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *suite.SuiteContext, ctx *types.Te
 	})
 
 	// restore the backup
-	kubernetescli.Execute("exec", dbplaygroundPodName, "--", "./restore_backup.sh", restoreDBData.Host, restoreDBData.Port, restoreDBData.Database, restoreDBData.User, restoreDBData.Password)
+	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", dbplaygroundPodName, "--", "./restore_backup.sh", restoreDBData.Host, restoreDBData.Port, restoreDBData.Database, restoreDBData.User, restoreDBData.Password)
 	log.Info("DB restored")
 
 	// deploy registry using restored db

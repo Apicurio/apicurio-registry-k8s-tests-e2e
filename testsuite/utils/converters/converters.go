@@ -220,7 +220,7 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 }
 
 func executeSQL(podName string, databaseName string, sql string) {
-	kubernetescli.Execute("exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
+	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
 }
 
 func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {
