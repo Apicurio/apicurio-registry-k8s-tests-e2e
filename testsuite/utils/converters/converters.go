@@ -49,6 +49,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}})
 	os.Chdir(oldDir)
 
+	//TODO make this work on openshift
 	apicurioDebeziumImage := "localhost:5000/apicurio-debezium:latest"
 
 	kafkaClusterName := "test-debezium-kafka"
@@ -219,7 +220,7 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 }
 
 func executeSQL(podName string, databaseName string, sql string) {
-	kubernetescli.Execute("exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
+	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
 }
 
 func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {
