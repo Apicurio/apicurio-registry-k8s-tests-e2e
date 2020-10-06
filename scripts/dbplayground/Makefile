@@ -1,6 +1,8 @@
 
+IMAGE_NAME?=quay.io/rh_integration/service-registry-dbplayground:pg10
+
 build:
-	docker build -t localhost:5000/dbplayground:latest .
+	docker build -t $(IMAGE_NAME) .
 
 push:
-	docker push localhost:5000/dbplayground:latest
+	docker push $(IMAGE_NAME)

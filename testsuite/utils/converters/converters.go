@@ -42,15 +42,22 @@ var databasePassword = "testpwd"
 func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
 	apicurioURL := "http://" + testContext.RegistryHost + ":" + testContext.RegistryPort + "/api/"
 
+	//TODO make this work on openshift
+	apicurioDebeziumImage := &suite.OcpImageReference{
+		ExternalImage: "localhost:5000/apicurio-debezium:latest",
+		InternalImage: "localhost:5000/apicurio-debezium:latest",
+	}
+
+	if suiteCtx.IsOpenshift {
+		apicurioDebeziumImage = suiteCtx.OcpInternalImage(utils.OperatorNamespace, "apicurio-debezium", "latest")
+	}
+
 	oldDir, err := os.Getwd()
 	Expect(err).NotTo(HaveOccurred())
 	apicurioDebeziumDistroDir := utils.SuiteProjectDirValue + "/scripts/converters"
 	os.Chdir(apicurioDebeziumDistroDir)
-	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}})
+	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}, Env: []string{"IMAGE_NAME=" + apicurioDebeziumImage.ExternalImage}})
 	os.Chdir(oldDir)
-
-	//TODO make this work on openshift
-	apicurioDebeziumImage := "localhost:5000/apicurio-debezium:latest"
 
 	kafkaClusterName := "test-debezium-kafka"
 	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(suiteCtx.Clientset, 1, kafkaClusterName, []string{})
@@ -69,7 +76,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	testContext.RegisterCleanup(postgresCleanup)
 
 	log.Info("Deploying debezium")
-	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
+	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
 	Expect(err).ToNot(HaveOccurred())
 	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService())
 	Expect(err).ToNot(HaveOccurred())
@@ -81,7 +88,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 
 	debeziumCleanup := func() {
 		log.Info("Removing debezium")
-		err := suiteCtx.K8sClient.Delete(context.TODO(), debeziumDeployment(apicurioDebeziumImage, kafkaClusterInfo.BootstrapServers))
+		err := suiteCtx.K8sClient.Delete(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
 		Expect(err).ToNot(HaveOccurred())
 		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService())
 		Expect(err).ToNot(HaveOccurred())

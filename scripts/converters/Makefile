@@ -1,9 +1,8 @@
 
+IMAGE_NAME?=localhost:5000/apicurio-debezium:latest
+
 build:
-	docker build -t localhost:5000/apicurio-debezium:latest .
+	docker build -t $(IMAGE_NAME) .
 
 push:
-	docker push localhost:5000/apicurio-debezium:latest
-
-test-deploy:
-	kubectl create deployment apicurio-debezium --image=localhost:5000/apicurio-debezium:latest
+	docker push $(IMAGE_NAME)

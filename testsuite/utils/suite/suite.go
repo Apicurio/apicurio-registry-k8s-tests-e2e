@@ -10,6 +10,7 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -53,6 +54,25 @@ type SuiteContext struct {
 	CLIKubernetesClient *kubernetescli.KubernetesClient
 
 	OnlyTestOperator bool
+}
+
+type OcpImageReference struct {
+	ExternalImage string
+	InternalImage string
+}
+
+func (ctx *SuiteContext) OcpInternalImage(namespace string, imageName string, tag string) *OcpImageReference {
+	// oc get route -n openshift-image-registry
+	ocpImageRegistryRoute, err := ctx.OcpRouteClient.Routes("openshift-image-registry").Get("default-route", metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred())
+
+	ocpImageRegistryHost := ocpImageRegistryRoute.Status.Ingress[0].Host
+
+	return &OcpImageReference{
+		ExternalImage: ocpImageRegistryHost + "/" + namespace + "/" + imageName + ":" + tag,
+		InternalImage: "image-registry.openshift-image-registry.svc:5000" + "/" + namespace + "/" + imageName + ":" + tag,
+	}
+	// return ocpImageRegistryHost + "/" + namespace + "/" + imageName + ":" + tag
 }
 
 var onlyTestOperator bool
@@ -129,6 +149,7 @@ func InitSuite(suiteCtx *SuiteContext) {
 	suiteCtx.IsOpenshift = isocp
 
 	if suiteCtx.IsOpenshift {
+		log.Info("Openshift cluster detected")
 		suiteCtx.OcpAppsClient = ocp_apps_client.NewForConfigOrDie(suiteCtx.Cfg)
 		suiteCtx.OcpRouteClient = ocp_route_client.NewForConfigOrDie(suiteCtx.Cfg)
 	}

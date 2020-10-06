@@ -2,6 +2,7 @@ package apicurio
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,7 +40,26 @@ func CreateRegistryAndWait(suiteCtx *suite.SuiteContext, ctx *types.TestContext,
 	waitForRegistryReady(suiteCtx, registry.Name)
 
 	if suiteCtx.IsOpenshift {
+		kubernetescli.Execute("get", "route", "-n", utils.OperatorNamespace)
+
 		labelsSet := labels.Set(map[string]string{"app": registry.Name})
+
+		timeout := 60 * time.Second
+		log.Info("Waiting for registry route to be ready", "timeout", timeout)
+		err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+			routes, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			if err != nil && !errors.IsNotFound(err) {
+				return false, err
+			}
+			if len(routes.Items) != 0 && len(routes.Items[0].Status.Ingress) != 0 {
+				//TODO fix this, workaround because operator first fills the host with a non existent url and later on it updates the host with a valid one
+				//I don't know how this happens, if it's the operator updating twice, or if it's ocp changing the route host...
+				return strings.HasSuffix(routes.Items[0].Status.Ingress[0].Host, ".com"), nil
+			}
+			return false, nil
+		})
+		kubernetescli.Execute("get", "route", "-n", utils.OperatorNamespace)
+		Expect(err).ToNot(HaveOccurred())
 		routes, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(routes.Items)).To(BeIdenticalTo(1))
@@ -71,9 +91,9 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 			}
 			return false, err
 		}
-		//TODO operator is not updating status
+		// TODO operator is not updating status
 		// if apicurioRegistry.Status.DeploymentName != "" {
-		// 	registryDeploymentName = apicurioRegistry.Status.DeploymentName
+		// 	// registryDeploymentName = apicurioRegistry.Status.DeploymentName
 		// 	return true, nil
 		// }
 		return true, nil
