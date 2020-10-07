@@ -1,6 +1,7 @@
 package kubernetescli
 
 import (
+	"os"
 	"sync"
 
 	. "github.com/onsi/gomega"
@@ -29,8 +30,6 @@ func NewCLIKubernetesClient(cmd CLIKubernetesClient) *KubernetesClient {
 	defer lock.Unlock()
 
 	if instance == nil {
-		// ainda não é a melhor implementação devido
-		// os bloqueios
 		instance = &KubernetesClient{
 			cmd: cmd,
 		}
@@ -58,4 +57,9 @@ func GetPods(namespace string) {
 
 func Execute(args ...string) {
 	utils.ExecuteCmdOrDie(true, string(GetCLIKubernetesClient().cmd), args...)
+}
+
+func RedirectOutput(stdOutFile *os.File, stdErrFile *os.File, args ...string) {
+	err := utils.Execute(&utils.Command{Cmd: append([]string{string(GetCLIKubernetesClient().cmd)}, args...)}, stdOutFile, stdErrFile)
+	Expect(err).ToNot(HaveOccurred())
 }

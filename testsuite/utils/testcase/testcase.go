@@ -14,6 +14,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/infinispan"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
@@ -117,7 +118,7 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 
 func saveLogsAndExecuteTestCleanups(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 	testDescription := CurrentGinkgoTestDescription()
-	utils.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
+	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
 
 	ctx.ExecuteCleanups()
 }

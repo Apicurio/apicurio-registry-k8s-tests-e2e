@@ -58,6 +58,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	os.Chdir(apicurioDebeziumDistroDir)
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}, Env: []string{"IMAGE_NAME=" + apicurioDebeziumImage.ExternalImage}})
 	os.Chdir(oldDir)
+	Expect(err).ToNot(HaveOccurred())
 
 	kafkaClusterName := "test-debezium-kafka"
 	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(suiteCtx.Clientset, 1, kafkaClusterName, []string{})
@@ -85,6 +86,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 
 	//TODO adapt this to work on openshift
 	debeziumURL := "http://localhost:80/debezium"
+	kubernetescli.Execute("get", "ingress", "-n", utils.OperatorNamespace)
 
 	debeziumCleanup := func() {
 		log.Info("Removing debezium")

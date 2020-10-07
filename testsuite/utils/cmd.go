@@ -26,6 +26,16 @@ type Command struct {
 
 //ExecuteCmd executes a command
 func ExecuteCmd(logOutput bool, command *Command) error {
+	var stdOutFile *os.File = nil
+	var stdErrFile *os.File = nil
+	if logOutput {
+		stdOutFile = os.Stdout
+		stdErrFile = os.Stderr
+	}
+	return Execute(command, stdOutFile, stdErrFile)
+}
+
+func Execute(command *Command, stdOutFile *os.File, stdErrFile *os.File) error {
 	log.Info("Executing command ", "cmd", strings.Join(command.Cmd, " "))
 	cmd := exec.Command(command.Cmd[0], command.Cmd[1:]...)
 	if command.Env != nil {
@@ -33,18 +43,15 @@ func ExecuteCmd(logOutput bool, command *Command) error {
 		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, command.Env...)
 	}
-	if logOutput {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
-	} else {
-		err := cmd.Run()
-		if err != nil {
-			return err
-		}
+	if stdOutFile != nil {
+		cmd.Stdout = stdOutFile
+	}
+	if stdErrFile != nil {
+		cmd.Stderr = stdErrFile
+	}
+	err := cmd.Run()
+	if err != nil {
+		return err
 	}
 	return nil
 }

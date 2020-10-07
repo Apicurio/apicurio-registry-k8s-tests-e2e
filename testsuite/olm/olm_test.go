@@ -13,6 +13,7 @@ import (
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
@@ -136,7 +137,7 @@ func installOperatorOLM() {
 
 func uninstallOperatorOLM() {
 
-	utils.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
+	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
 
 	log.Info("Uninstalling operator")
 

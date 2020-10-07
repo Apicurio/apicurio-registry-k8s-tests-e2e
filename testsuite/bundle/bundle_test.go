@@ -12,6 +12,7 @@ import (
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 )
 
@@ -66,7 +67,7 @@ func uninstallOperator() {
 		defer os.Remove(bundlePath)
 	}
 
-	utils.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
+	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
 
 	log.Info("Uninstalling operator")
 
