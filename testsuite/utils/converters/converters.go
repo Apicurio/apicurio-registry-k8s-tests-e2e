@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -18,6 +17,8 @@ import (
 	"k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
@@ -52,13 +53,9 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 		apicurioDebeziumImage = suiteCtx.OcpInternalImage(utils.OperatorNamespace, "apicurio-debezium", "latest")
 	}
 
-	oldDir, err := os.Getwd()
-	Expect(err).NotTo(HaveOccurred())
 	apicurioDebeziumDistroDir := utils.SuiteProjectDirValue + "/scripts/converters"
-	os.Chdir(apicurioDebeziumDistroDir)
-	err = utils.ExecuteCmd(true, &utils.Command{Cmd: []string{"make", "build", "push"}, Env: []string{"IMAGE_NAME=" + apicurioDebeziumImage.ExternalImage}})
-	os.Chdir(oldDir)
-	Expect(err).ToNot(HaveOccurred())
+	utils.ExecuteCmdOrDie(true, "docker", "build", "-t", apicurioDebeziumImage.ExternalImage, apicurioDebeziumDistroDir)
+	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
 	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(suiteCtx.Clientset, 1, kafkaClusterName, []string{})
@@ -77,16 +74,17 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	testContext.RegisterCleanup(postgresCleanup)
 
 	log.Info("Deploying debezium")
-	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
+	err := suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
 	Expect(err).ToNot(HaveOccurred())
 	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService())
 	Expect(err).ToNot(HaveOccurred())
-	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumIngress(suiteCtx))
-	Expect(err).ToNot(HaveOccurred())
-
-	//TODO adapt this to work on openshift
-	debeziumURL := "http://localhost:80/debezium"
-	kubernetescli.Execute("get", "ingress", "-n", utils.OperatorNamespace)
+	if suiteCtx.IsOpenshift {
+		_, err = suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Create(ocpDebeziumRoute())
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		err = suiteCtx.K8sClient.Create(context.TODO(), kindDebeziumIngress())
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	debeziumCleanup := func() {
 		log.Info("Removing debezium")
@@ -94,12 +92,25 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 		Expect(err).ToNot(HaveOccurred())
 		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService())
 		Expect(err).ToNot(HaveOccurred())
-		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumIngress(nil))
-		Expect(err).ToNot(HaveOccurred())
+		if suiteCtx.IsOpenshift {
+			err = suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Delete(debeziumName, &metav1.DeleteOptions{})
+			Expect(err).ToNot(HaveOccurred())
+		} else {
+			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress())
+			Expect(err).ToNot(HaveOccurred())
+		}
+
 	}
 	testContext.RegisterCleanup(debeziumCleanup)
 
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, debeziumName, 1)
+
+	debeziumURL := "http://localhost:80/debezium"
+	if suiteCtx.IsOpenshift {
+		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Get(debeziumName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		debeziumURL = "http://" + debeziumRoute.Status.Ingress[0].Host
+	}
 
 	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, databaseName).Name
 	executeSQL(postgresqlPodName, databaseName, "drop schema if exists todo cascade")
@@ -342,8 +353,8 @@ func debeziumService() *corev1.Service {
 	}
 }
 
-func debeziumIngress(suite *suite.SuiteContext) *v1beta1.Ingress {
-	ingress := &v1beta1.Ingress{
+func kindDebeziumIngress() *v1beta1.Ingress {
+	return &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
@@ -355,6 +366,7 @@ func debeziumIngress(suite *suite.SuiteContext) *v1beta1.Ingress {
 		Spec: v1beta1.IngressSpec{
 			Rules: []v1beta1.IngressRule{
 				{
+					Host: "localhost",
 					IngressRuleValue: v1beta1.IngressRuleValue{
 						HTTP: &v1beta1.HTTPIngressRuleValue{
 							Paths: []v1beta1.HTTPIngressPath{
@@ -372,9 +384,23 @@ func debeziumIngress(suite *suite.SuiteContext) *v1beta1.Ingress {
 			},
 		},
 	}
-	if suite != nil && !suite.IsOpenshift {
-		//this is just a workaround to make it work with Kind nginx ingress
-		ingress.Spec.Rules[0].Host = "localhost"
+}
+
+func ocpDebeziumRoute() *routev1.Route {
+	var weigh int32 = 100
+	return &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:    labels,
+			Name:      debeziumName,
+			Namespace: utils.OperatorNamespace,
+		},
+		Spec: routev1.RouteSpec{
+			Path: "/",
+			To: routev1.RouteTargetReference{
+				Kind:   "Service",
+				Name:   debeziumName,
+				Weight: &weigh,
+			},
+		},
 	}
-	return ingress
 }

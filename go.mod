@@ -7,6 +7,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.4.2
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
+	github.com/openshift/api v0.0.0-20200205133042-34f0ec8dab87
 	github.com/openshift/client-go v0.0.0-20200116152001-92a2713fa240
 	github.com/operator-framework/operator-lifecycle-manager v0.0.0-20200321030439-57b580e57e88
 	k8s.io/api v0.18.6
