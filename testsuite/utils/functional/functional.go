@@ -20,9 +20,12 @@ var log = logf.Log.WithName("functional")
 //ExecuteRegistryFunctionalTests invokes via maven the integration tests in apicurio-registry repo
 func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
 	testProfile := "smoke"
+	if utils.ApicurioTestsProfile != "" {
+		testProfile = utils.ApicurioTestsProfile
+	}
 
 	oldDir, err := os.Getwd()
-	apicurioProjectDir := utils.SuiteProjectDirValue + "/apicurio-registry"
+	apicurioProjectDir := utils.SuiteProjectDir + "/apicurio-registry"
 	if utils.ApicurioProjectDir != "" {
 		apicurioProjectDir = utils.ApicurioProjectDir
 	}

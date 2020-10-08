@@ -97,7 +97,7 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 		minisr = "2"
 	}
 	kafkaClusterManifestFile := utils.Template("kafka-cluster",
-		utils.SuiteProjectDirValue+"/kubefiles/kafka-cluster-template.yaml",
+		utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
 		utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
 		utils.Replacement{Old: "{NAME}", New: name},
 		utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
@@ -110,7 +110,7 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 
 	for _, topic := range topics {
 		kafkaTopicManifestFile := utils.Template("kafka-topic-"+topic,
-			utils.SuiteProjectDirValue+"/kubefiles/kafka-topic-template.yaml",
+			utils.SuiteProjectDir+"/kubefiles/kafka-topic-template.yaml",
 			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
 			utils.Replacement{Old: "{TOPIC_NAME}", New: topic},
 			utils.Replacement{Old: "{CLUSTER_NAME}", New: name},

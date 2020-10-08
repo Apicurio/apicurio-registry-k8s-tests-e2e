@@ -174,7 +174,7 @@ func TearDownSuite(suiteCtx *SuiteContext) {
 //RunSuite starts the execution of a test suite
 func RunSuite(t *testing.T, suiteName string, suiteCtx *SuiteContext) {
 
-	if utils.SuiteProjectDirValue == "" {
+	if utils.SuiteProjectDir == "" {
 		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
 	}
 
@@ -184,7 +184,7 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *SuiteContext) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDirValue+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
+	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
 		[]Reporter{printer.NewlineReporter{}, junitReporter},

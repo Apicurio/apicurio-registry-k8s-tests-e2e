@@ -33,7 +33,7 @@ export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 # CI
 # run-operator-ci: kind-start kind-catalog-source-img run-operator-tests
 # FIXME ignoring olm for now
-run-operator-ci: kind-start pull-operator-repo run-operator-tests
+run-operator-ci: kind-start pull-operator-repo setup-operator-deps run-operator-tests
 
 run-apicurio-ci: kind-start pull-operator-repo setup-apicurio-deps run-apicurio-tests
 
@@ -45,13 +45,47 @@ create-catalog-source-image:
 kind-catalog-source-img: create-catalog-source-image
 	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
 
-setup-apicurio-deps:
-	#setup operator bundle
-	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:latest-snapshot\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-kafka.*\"#apicurio/apicurio-registry-kafka:latest-snapshot\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-streams.*\"#apicurio/apicurio-registry-streams:latest-snapshot\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-jpa.*\"#apicurio/apicurio-registry-jpa:latest-snapshot\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-infinispan.*\"#apicurio/apicurio-registry-infinispan:latest-snapshot\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+OPERATOR_IMAGE?=docker.io/apicurio/apicurio-registry-operator:latest-dev
+
+kind-load-operator-images:
+	docker tag $(OPERATOR_IMAGE) localhost:5000/apicurio-registry-operator:latest-ci
+	docker push localhost:5000/apicurio-registry-operator:latest-ci
+	sed -i "s#docker.io/apicurio/apicurio-registry-operator.*#localhost:5000/apicurio-registry-operator:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images)
+
+APICURIO_IMAGES_TAG?=latest-snapshot
+
+kind-load-apicurio-images:
+	docker tag apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-mem:latest-ci
+	docker push localhost:5000/apicurio-registry-mem:latest-ci
+	sed -i "s#docker.io/apicurio/apicurio-registry-mem.*\"#localhost:5000/apicurio-registry-mem:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+	docker tag apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-streams:latest-ci
+	docker push localhost:5000/apicurio-registry-streams:latest-ci
+	sed -i "s#docker.io/apicurio/apicurio-registry-streams.*\"#localhost:5000/apicurio-registry-streams:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+	docker tag apicurio/apicurio-registry-jpa:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-jpa:latest-ci
+	docker push localhost:5000/apicurio-registry-jpa:latest-ci
+	sed -i "s#docker.io/apicurio/apicurio-registry-jpa.*\"#localhost:5000/apicurio-registry-jpa:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+	docker tag apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-infinispan:latest-ci
+	docker push localhost:5000/apicurio-registry-infinispan:latest-ci
+	sed -i "s#docker.io/apicurio/apicurio-registry-infinispan.*\"#localhost:5000/apicurio-registry-infinispan:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+default-replace-apicurio-images:
+	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-streams.*\"#apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-jpa.*\"#apicurio/apicurio-registry-jpa:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-infinispan.*\"#apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+
+ifeq ($(CI_BUILD),true)
+APICURIO_TARGETS = kind-load-apicurio-images
+else
+APICURIO_TARGETS = default-replace-apicurio-images
+endif
+
+setup-apicurio-deps: $(APICURIO_TARGETS)
 	#setup kafka connect converters distro
 	cp $(E2E_APICURIO_PROJECT_DIR)/distro/connect-converter/target/apicurio-kafka-connect-converter-*-converter.tar.gz scripts/converters/converter-distro.tar.gz
 

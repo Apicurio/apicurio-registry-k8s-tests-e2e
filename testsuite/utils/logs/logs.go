@@ -52,7 +52,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 		Expect(err).ToNot(HaveOccurred())
 		// str := buf.String()
 
-		logsDir := utils.SuiteProjectDirValue + "/tests-logs/" + suiteID + "/operator/namespaces/" + pod.Namespace + "/"
+		logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/operator/namespaces/" + pod.Namespace + "/"
 		os.MkdirAll(logsDir, os.ModePerm)
 		logFile := logsDir + pod.Name + ".log"
 		log.Info("Storing operator logs", "file", logFile)
@@ -75,7 +75,7 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testDescr
 	pods, err := clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
-	logsDir := utils.SuiteProjectDirValue + "/tests-logs/" + suiteID + "/" + testName + "/namespaces/" + utils.OperatorNamespace + "/"
+	logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/" + testName + "/namespaces/" + utils.OperatorNamespace + "/"
 	os.MkdirAll(logsDir, os.ModePerm)
 
 	//first we collect all pods statuses and cluster events

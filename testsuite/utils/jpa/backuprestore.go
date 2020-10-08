@@ -101,7 +101,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *suite.SuiteContext, ctx *types.Te
 	RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, backupDBData.Name)
 
 	// deploy the new db, this deployment already creates the database
-	restoreDBData := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, "restoredb", "restoredb", "test2", "test2")
+	restoreDBData := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, "restoredb", "restoredb", "test", "test")
 	ctx.RegisterCleanup(func() {
 		RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, restoreDBData.Name)
 	})
