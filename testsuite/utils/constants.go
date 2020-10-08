@@ -9,6 +9,7 @@ import (
 const (
 	SuiteProjectDirEnvVar           = "E2E_SUITE_PROJECT_DIR"
 	ApicurioProjectDirEnvVar        = "E2E_APICURIO_PROJECT_DIR"
+	ApicurioTestsProfileEnvVar      = "E2E_APICURIO_TESTS_PROFILE"
 	ExtraMavenArgsEnvVar            = "E2E_EXTRA_MAVEN_ARGS"
 	OLMCatalogSourceImageEnvVar     = "E2E_OLM_CATALOG_SOURCE_IMAGE"
 	OperatorBundlePathEnvVar        = "E2E_OPERATOR_BUNDLE_PATH"
@@ -23,8 +24,8 @@ const (
 	StorageInfinispan = "infinispan"
 )
 
-//SuiteProjectDirValue value of SuiteProjectDirEnvVar
-var SuiteProjectDirValue string = os.Getenv(SuiteProjectDirEnvVar)
+//SuiteProjectDir value of SuiteProjectDirEnvVar
+var SuiteProjectDir string = os.Getenv(SuiteProjectDirEnvVar)
 
 //ExtraMavenArgs value of ExtraMavenArgsEnvVar
 var ExtraMavenArgs string = os.Getenv(ExtraMavenArgsEnvVar)
@@ -37,6 +38,9 @@ var OperatorBundlePath string = os.Getenv(OperatorBundlePathEnvVar)
 
 //ApicurioProjectDir value of ApicurioProjectDirEnvVar
 var ApicurioProjectDir string = os.Getenv(ApicurioProjectDirEnvVar)
+
+//ApicurioTestsProfile value of ApicurioTestsProfileEnvVar
+var ApicurioTestsProfile string = os.Getenv(ApicurioTestsProfileEnvVar)
 
 //StrimziOperatorBundlePath value of StrimziOperatorBundlePathEnvVar
 var StrimziOperatorBundlePath string = os.Getenv(StrimziOperatorBundlePathEnvVar)

@@ -53,7 +53,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 		apicurioDebeziumImage = suiteCtx.OcpInternalImage(utils.OperatorNamespace, "apicurio-debezium", "latest")
 	}
 
-	apicurioDebeziumDistroDir := utils.SuiteProjectDirValue + "/scripts/converters"
+	apicurioDebeziumDistroDir := utils.SuiteProjectDir + "/scripts/converters"
 	utils.ExecuteCmdOrDie(true, "docker", "build", "-t", apicurioDebeziumImage.ExternalImage, apicurioDebeziumDistroDir)
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
