@@ -2,6 +2,7 @@ package apicurio
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,6 +27,8 @@ var log = logf.Log.WithName("apicurio")
 
 //CreateRegistryAndWait common logic to create one ApicurioRegistry and wait for the deployment to be ready
 func CreateRegistryAndWait(suiteCtx *suite.SuiteContext, ctx *types.TestContext, registry *apicurio.ApicurioRegistry) {
+
+	ctx.RegistryName = registry.Name
 
 	if !suiteCtx.IsOpenshift {
 		// this is just a workaround to work with Kind nginx ingress
@@ -233,4 +236,15 @@ func ExistsRegistry(suiteCtx *suite.SuiteContext, registryName string) bool {
 		Expect(err).ToNot(HaveOccurred())
 	}
 	return obj.Name == registryName
+}
+
+//TODO fix this, operator usability problem, service name should be consistent
+func GetRegistryInternalUrl(suiteCtx *suite.SuiteContext, registryName string) string {
+	labelsSet := labels.Set(map[string]string{"app": registryName})
+	svcs, err := suiteCtx.Clientset.CoreV1().Services(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(svcs.Items)).To(BeIdenticalTo(1))
+	reg := svcs.Items[0]
+
+	return "http://" + reg.Name + ":" + strconv.Itoa(int(reg.Spec.Ports[0].Port))
 }

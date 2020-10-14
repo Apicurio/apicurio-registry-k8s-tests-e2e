@@ -16,6 +16,7 @@ export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 
 # apicurio-registry variables
 E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
+# export E2E_APICURIO_TESTS_PROFILE=cluster
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install.yaml

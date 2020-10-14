@@ -35,9 +35,7 @@ var registryName string
 //DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
 func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
 
-	var clientset *kubernetes.Clientset = suiteCtx.Clientset
-
-	kafkaClusterInfo := DeployKafkaCluster(clientset, 3, registryKafkaClusterName, registryKafkaTopics)
+	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, 3, registryKafkaClusterName, registryKafkaTopics)
 
 	bootstrapServers := kafkaClusterInfo.BootstrapServers
 
@@ -82,28 +80,52 @@ func RemoveStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 
 //KafkaClusterInfo holds useful info to use a kafka cluster
 type KafkaClusterInfo struct {
-	StrimziDeployed  bool
-	BootstrapServers string
+	StrimziDeployed          bool
+	BootstrapServers         string
+	ExternalBootstrapServers string
+}
+
+func DeployKafkaCluster(suiteCtx *suite.SuiteContext, replicas int, name string, topics []string) *KafkaClusterInfo {
+	return DeployKafkaClusterV2(suiteCtx, replicas, false, name, topics)
 }
 
 //DeployKafkaCluster deploys a kafka cluster and some topics, returns a flag to indicate if strimzi operator has been deployed(useful to know if it was already installed)
-func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name string, topics []string) KafkaClusterInfo {
+func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExternal bool, name string, topics []string) *KafkaClusterInfo {
 
-	strimziDeployed := deployStrimziOperator(clientset)
+	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset)
+
+	clusterInfo := &KafkaClusterInfo{StrimziDeployed: strimziDeployed}
 
 	var replicasStr string = strconv.Itoa(replicas)
 	minisr := "1"
 	if replicas > 1 {
 		minisr = "2"
 	}
-	kafkaClusterManifestFile := utils.Template("kafka-cluster",
-		utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
-		utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
-		utils.Replacement{Old: "{NAME}", New: name},
-		utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
-		utils.Replacement{Old: "{MIN_ISR}", New: minisr},
-	)
-	kafkaClusterManifest := kafkaClusterManifestFile.Name()
+	var kafkaClusterManifest string = ""
+	if exposeExternal {
+		boostrapHost := "bootstrap.127.0.0.1.nip.io"
+		brokerHost := "broker-0.127.0.0.1.nip.io"
+		//TODO adapt this to work on openshift
+		clusterInfo.ExternalBootstrapServers = boostrapHost + ":443"
+
+		kafkaClusterManifestFile := utils.Template("kafka-cluster",
+			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-external-template.yaml",
+			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
+			utils.Replacement{Old: "{NAME}", New: name},
+			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: boostrapHost},
+			utils.Replacement{Old: "{BROKER_HOST}", New: brokerHost},
+		)
+		kafkaClusterManifest = kafkaClusterManifestFile.Name()
+	} else {
+		kafkaClusterManifestFile := utils.Template("kafka-cluster",
+			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
+			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
+			utils.Replacement{Old: "{NAME}", New: name},
+			utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
+			utils.Replacement{Old: "{MIN_ISR}", New: minisr},
+		)
+		kafkaClusterManifest = kafkaClusterManifestFile.Name()
+	}
 
 	log.Info("Deploying kafka cluster " + name)
 	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", utils.OperatorNamespace)
@@ -128,7 +150,7 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 	timeout := 4 * time.Minute
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name+"-entity-operator", metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name+"-entity-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -143,10 +165,11 @@ func DeployKafkaCluster(clientset *kubernetes.Clientset, replicas int, name stri
 	kubernetescli.GetPods(utils.OperatorNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	svc, err := clientset.CoreV1().Services(utils.OperatorNamespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+	svc, err := suiteCtx.Clientset.CoreV1().Services(utils.OperatorNamespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	bootstrapServers := svc.Spec.ClusterIP + ":9092"
-	return KafkaClusterInfo{StrimziDeployed: strimziDeployed, BootstrapServers: bootstrapServers}
+	clusterInfo.BootstrapServers = bootstrapServers
+	return clusterInfo
 }
 
 func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
