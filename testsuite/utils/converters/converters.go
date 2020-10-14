@@ -126,10 +126,9 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
 	})
 
-	expectedRecords := 3
+	expectedRecords := 2
 	executeSQL(postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
 	executeSQL(postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
-	executeSQL(postgresqlPodName, "insert into todo.Todo values (3, 'you rock')")
 	executeSQL(postgresqlPodName, "select * from todo.Todo")
 
 	dialer := &kafka.Dialer{
@@ -151,7 +150,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 
 	var records []*kafka.Message = make([]*kafka.Message, 0)
 	for {
-		timeout, cf := context.WithTimeout(context.Background(), 20*time.Second)
+		timeout, cf := context.WithTimeout(context.Background(), 30*time.Second)
 		m, err := r.ReadMessage(timeout)
 		cf()
 		if err != nil {
