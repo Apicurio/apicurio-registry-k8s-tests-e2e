@@ -3,12 +3,15 @@ package converters
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/segmentio/kafka-go"
 	"k8s.io/apimachinery/pkg/util/wait"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -21,14 +24,14 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
+	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
-
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 var log = logf.Log.WithName("postgresql")
@@ -41,9 +44,7 @@ var databaseUser = "testuser"
 var databasePassword = "testpwd"
 
 func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
-	apicurioURL := "http://" + testContext.RegistryHost + ":" + testContext.RegistryPort + "/api/"
 
-	//TODO make this work on openshift
 	apicurioDebeziumImage := &suite.OcpImageReference{
 		ExternalImage: "localhost:5000/apicurio-debezium:latest",
 		InternalImage: "localhost:5000/apicurio-debezium:latest",
@@ -58,7 +59,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo streams.KafkaClusterInfo = streams.DeployKafkaCluster(suiteCtx.Clientset, 1, kafkaClusterName, []string{})
+	var kafkaClusterInfo *streams.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
 			streams.RemoveKafkaCluster(suiteCtx.Clientset, kafkaClusterName, []string{})
@@ -99,7 +100,6 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress())
 			Expect(err).ToNot(HaveOccurred())
 		}
-
 	}
 	testContext.RegisterCleanup(debeziumCleanup)
 
@@ -113,68 +113,77 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	}
 
 	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, databaseName).Name
-	executeSQL(postgresqlPodName, databaseName, "drop schema if exists todo cascade")
-	executeSQL(postgresqlPodName, databaseName, "create schema todo")
-	executeSQL(postgresqlPodName, databaseName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
-	executeSQL(postgresqlPodName, databaseName, "alter table todo.Todo replica identity full")
+	executeSQL(postgresqlPodName, "drop schema if exists todo cascade")
+	executeSQL(postgresqlPodName, "create schema todo")
+	executeSQL(postgresqlPodName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
+	executeSQL(postgresqlPodName, "alter table todo.Todo replica identity full")
 
-	createDebeziumJdbcConnector(debeziumURL, "my-connector-avro", "io.apicurio.registry.utils.converter.AvroConverter", apicurioURL, map[string]interface{}{
+	var debeziumTopic string = "dbserver2.todo.todo"
+	createDebeziumJdbcConnector(debeziumURL, "my-connector-avro", "io.apicurio.registry.utils.converter.AvroConverter", apicurio.GetRegistryInternalUrl(suiteCtx, testContext.RegistryName)+"/api/", map[string]interface{}{
 		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
 		"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
 		"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
 		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
 	})
 
-	executeSQL(postgresqlPodName, databaseName, "insert into todo.Todo values (1, 'Be Awesome')")
-	executeSQL(postgresqlPodName, databaseName, "insert into todo.Todo values (2, 'Even more')")
-	executeSQL(postgresqlPodName, databaseName, "select * from todo.Todo")
+	expectedRecords := 3
+	executeSQL(postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
+	executeSQL(postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
+	executeSQL(postgresqlPodName, "insert into todo.Todo values (3, 'you rock')")
+	executeSQL(postgresqlPodName, "select * from todo.Todo")
 
-	kafkaConsumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": kafkaClusterInfo.BootstrapServers,
-		"group.id":          "apicurio-registry-test",
-		"auto.offset.reset": "earliest",
+	dialer := &kafka.Dialer{
+		Timeout:   10 * time.Second,
+		DualStack: true,
+		TLS: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	r := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: []string{kafkaClusterInfo.ExternalBootstrapServers},
+		GroupID: "apicurio-registry-test",
+		Topic:   debeziumTopic,
+		Dialer:  dialer,
 	})
-	Expect(err).ToNot(HaveOccurred())
 
-	kafkaConsumer.SubscribeTopics([]string{"dbserver2.todo.todo"}, nil)
+	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
 
-	records := drainKafka(kafkaConsumer, 2)
+	var records []*kafka.Message = make([]*kafka.Message, 0)
+	for {
+		timeout, cf := context.WithTimeout(context.Background(), 20*time.Second)
+		m, err := r.ReadMessage(timeout)
+		cf()
+		if err != nil {
+			log.Info("Error " + err.Error())
+			break
+		}
+		log.Info("kafka message received")
+		records = append(records, &m)
+		if len(records) >= expectedRecords {
+			break
+		}
+	}
 
-	log.Info("Kafka record")
-	log.Info(records[0].String())
-	log.Info(string(records[0].Key))
-	log.Info(string(records[0].Value))
+	if err := r.Close(); err != nil {
+		log.Info("failed to close reader:", err)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
+	Expect(len(records)).To(BeIdenticalTo(expectedRecords))
+	// log.Info(string(records[0].Key))
+	// log.Info(string(records[0].Value))
 
 	Expect(records[0].Key[0]).To(Equal(byte(0)))
 	Expect(records[0].Value[0]).To(Equal(byte(0)))
 
-	artifactsRes, err := http.Get(apicurioURL + "artifacts")
+	apicurio := apicurioclient.NewApicurioRegistryApiClient(testContext.RegistryHost, testContext.RegistryPort, http.DefaultClient)
+	artifacts, err := apicurio.ListArtifacts()
 	Expect(err).ToNot(HaveOccurred())
-	artifactsStr := utils.ReaderToString(artifactsRes.Body)
-	log.Info("Artifacts after debezium are " + artifactsStr)
+	log.Info("Artifacts after debezium are " + strings.Join(artifacts, ", "))
+	Expect(len(artifacts)).To(BeIdenticalTo(2))
+	Expect(artifacts).Should(ContainElements(debeziumTopic+"-key", debeziumTopic+"-value"))
 
-	kafkaConsumer.Unsubscribe()
-	kafkaConsumer.Close()
-
-}
-
-func drainKafka(c *kafka.Consumer, expectedRecords int) []*kafka.Message {
-	var records []*kafka.Message = make([]*kafka.Message, 0)
-	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
-	timeout := 60 * time.Second
-	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		msg, err := c.ReadMessage(50 * time.Millisecond)
-		if err != nil {
-			if err.(kafka.Error).Code() == kafka.ErrTimedOut {
-				return false, nil
-			}
-			return false, err
-		}
-		records = append(records, msg)
-		return len(records) >= expectedRecords, nil
-	})
-	Expect(err).ToNot(HaveOccurred())
-	return records
 }
 
 type DebeziumConnector struct {
@@ -239,8 +248,8 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func executeSQL(podName string, databaseName string, sql string) {
-	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", podName, "--", "psql", "-d", databaseName, "-c", sql)
+func executeSQL(podName string, sql string) {
+	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", podName, "--", "psql", "-d", databaseName, "-U", databaseUser, "-c", sql)
 }
 
 func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {

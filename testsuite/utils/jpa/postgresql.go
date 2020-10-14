@@ -197,23 +197,28 @@ func postgresqlDeployment(name string, database string, user string, password st
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  name,
-							Image: "centos/postgresql-10-centos7:20200917-804ef01",
+							Name: name,
+							// Image: "centos/postgresql-10-centos7:20200917-804ef01",
+							// Image: "quay.io/debezium/example-postgres:1.2",
+							Image: "quay.io/debezium/postgres:10",
 							Env: []corev1.EnvVar{
+								// {
+								// 	Name:  "POSTGRESQL_ADMIN_PASSWORD",
+								// 	Value: "admin1234",
+								// },
 								{
-									Name:  "POSTGRESQL_ADMIN_PASSWORD",
-									Value: "admin1234",
-								},
-								{
-									Name:  "POSTGRESQL_DATABASE",
+									// Name:  "POSTGRESQL_DATABASE",
+									Name:  "POSTGRES_DB",
 									Value: database,
 								},
 								{
-									Name:  "POSTGRESQL_PASSWORD",
+									// Name:  "POSTGRESQL_PASSWORD",
+									Name:  "POSTGRES_PASSWORD",
 									Value: password,
 								},
 								{
-									Name:  "POSTGRESQL_USER",
+									// Name:  "POSTGRESQL_USER",
+									Name:  "POSTGRES_USER",
 									Value: user,
 								},
 							},
@@ -244,7 +249,8 @@ func postgresqlDeployment(name string, database string, user string, password st
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									MountPath: "/var/lib/pgsql/data",
+									// MountPath: "/var/lib/pgsql/data",
+									MountPath: "/var/lib/postgresql/data",
 									Name:      name,
 								},
 							},

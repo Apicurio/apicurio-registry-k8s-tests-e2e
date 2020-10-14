@@ -5,6 +5,7 @@ type TestContext struct {
 	ID      string
 	Storage string
 
+	RegistryName string
 	RegistryHost string
 	RegistryPort string
 
