@@ -23,7 +23,6 @@ import (
 var log = logf.Log.WithName("logs")
 
 func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
-	//TODO collect first all pods statuses and cluster events
 
 	operatorDeployment, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {

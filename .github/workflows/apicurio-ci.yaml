@@ -4,11 +4,17 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  schedule:
+    - cron: '0 */6 * * *' # Every 6 hours
 
 jobs:
   tests:
     name: Apicurio Registry Kubernetes Tests
     runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        test_profile: [smoke, acceptance, cluster, ui, all]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -28,7 +34,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Kubernetes Tests
-        run: ./.github/scripts/test_apicurio_kubernetes.sh
+        run:  E2E_APICURIO_TESTS_PROFILE=${{ matrix.test_profile }} ./.github/scripts/test_apicurio_kubernetes.sh
 
       - name: Collect logs
         if: failure()

@@ -74,8 +74,6 @@ func RemoveStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 
 	RemoveStrimziOperator(suiteCtx.Clientset)
 
-	//TODO wait properly to cleanup
-
 }
 
 //KafkaClusterInfo holds useful info to use a kafka cluster

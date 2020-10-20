@@ -19,6 +19,7 @@ import (
 var _ = Describe("bundle installation", func() {
 
 	testcase.CommonTestCases(suiteCtx)
+	testcase.BundleOnlyTestCases(suiteCtx)
 
 })
 

@@ -34,6 +34,10 @@ func CommonTestCases(suiteCtx *suite.SuiteContext) {
 		Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 	)
 
+}
+
+//BundleOnlyTestCases contains test cases that will be only executed for operator bundle installation
+func BundleOnlyTestCases(suiteCtx *suite.SuiteContext) {
 	if !suiteCtx.OnlyTestOperator {
 		var _ = DescribeTable("kafka connect converters",
 			func(testContext *types.TestContext) {
@@ -51,7 +55,6 @@ func CommonTestCases(suiteCtx *suite.SuiteContext) {
 		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	})
-
 }
 
 //ExecuteTestCase common logic to test operator deploying an instance of ApicurioRegistry with one of it's storage variants
