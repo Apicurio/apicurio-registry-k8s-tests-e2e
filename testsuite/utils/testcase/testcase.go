@@ -43,7 +43,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 				executeConvertersTestCase(suiteCtx, testContext)
 			},
 
-			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
+			Entry("postgres", &types.TestContext{Storage: utils.StorageJpa}),
 			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
 			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 		)

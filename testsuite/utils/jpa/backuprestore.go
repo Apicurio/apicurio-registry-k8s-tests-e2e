@@ -28,7 +28,7 @@ var dbplaygroundlabels map[string]string = map[string]string{"apicurio": "dbplay
 func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	//deploy db and registry
-	backupDBData := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, "backupdb", "backupdb", "test", "test")
+	backupDBData := DeployPostgresqlDatabase(suiteCtx, ctx.RegistryNamespace, "backupdb", "backupdb", "test", "test")
 	ctx.RegisterCleanup(func() {
 		RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, backupDBData.Name)
 	})
@@ -99,7 +99,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 	RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, backupDBData.Name)
 
 	// deploy the new db, this deployment already creates the database
-	restoreDBData := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, "restoredb", "restoredb", "test", "test")
+	restoreDBData := DeployPostgresqlDatabase(suiteCtx, ctx.RegistryNamespace, "restoredb", "restoredb", "test", "test")
 	ctx.RegisterCleanup(func() {
 		RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, restoreDBData.Name)
 	})

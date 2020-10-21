@@ -130,6 +130,10 @@ run-jpa-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="jpa" ./testsuite/bundle
 
+run-olm-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator
+
 example-run-jpa-and-streams-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="jpa|streams" -dryRun
@@ -146,9 +150,17 @@ clean-tests-logs:
 	rm -rf tests-logs
 
 # repo dependencies utilities
+# APICURIO_REGISTRY_REPO?=https://github.com/Apicurio/apicurio-registry.git
+
+# TODO remove this reference to famartirh repo
+APICURIO_REGISTRY_REPO?=https://github.com/famartinrh/apicurio-registry.git
+
+# APICURIO_REGISTRY_BRANCH?=master
+APICURIO_REGISTRY_BRANCH?=fix-tests-timeouts
+
 pull-apicurio-registry:
 ifeq (,$(wildcard ./apicurio-registry))
-	git clone https://github.com/Apicurio/apicurio-registry.git
+	git clone -b $(APICURIO_REGISTRY_BRANCH) $(APICURIO_REGISTRY_REPO)
 else
 	cd apicurio-registry; git pull
 endif

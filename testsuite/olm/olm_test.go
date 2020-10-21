@@ -36,6 +36,10 @@ const operatorNamespace string = utils.OperatorNamespace
 
 var operatorCSV string
 
+func logPodsAll() {
+	kubernetescli.Execute("get", "pod", "-n", operatorNamespace, "-o", "yaml")
+}
+
 func installOperatorOLM() {
 
 	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
@@ -70,6 +74,9 @@ func installOperatorOLM() {
 		return false, nil
 	})
 	kubernetescli.GetPods(catalogSourceNamespace)
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	//operator-group
@@ -83,6 +90,9 @@ func installOperatorOLM() {
 			TargetNamespaces: []string{operatorNamespace},
 		},
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	//subscription
@@ -99,6 +109,9 @@ func installOperatorOLM() {
 		}
 		return false, nil
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
@@ -132,6 +145,9 @@ func installOperatorOLM() {
 			InstallPlanApproval:    operatorsv1alpha1.ApprovalAutomatic,
 		},
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)

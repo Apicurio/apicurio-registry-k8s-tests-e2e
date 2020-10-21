@@ -38,7 +38,7 @@ var log = logf.Log.WithName("converters")
 var debeziumName string = "apicurio-debezium"
 var labels map[string]string = map[string]string{"apicurio": "qe"}
 
-var databaseName = "test-db"
+var databaseName = "testdb"
 var databaseUser = "testuser"
 var databasePassword = "testpwd"
 
@@ -67,7 +67,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
 
-	jpa.DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
+	jpa.DeployPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
 		jpa.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName)
 	}

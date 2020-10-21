@@ -1,7 +1,7 @@
 ARG MANIFESTS_IMAGE
 FROM ${MANIFESTS_IMAGE} AS manifests_image
 
-FROM quay.io/operator-framework/upstream-registry-builder:latest
+FROM quay.io/operator-framework/upstream-registry-builder:v1.12.8
 
 COPY --from=manifests_image /manifests manifests
 

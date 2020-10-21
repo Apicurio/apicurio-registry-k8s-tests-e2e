@@ -36,9 +36,9 @@ var registryName string
 //DeployJpaRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
 func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	user := "apicurio-registry"
+	user := "apicuriouser"
 	password := "password"
-	dataSourceURL := DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, registryPostgresqlName, "apicurio-registry", user, password).DataSourceURL
+	dataSourceURL := DeployPostgresqlDatabase(suiteCtx, ctx.RegistryNamespace, registryPostgresqlName, "apicurioregistry", user, password).DataSourceURL
 
 	log.Info("Deploying apicurio registry")
 
@@ -84,20 +84,25 @@ type DbData struct {
 }
 
 //DeployPostgresqlDatabase deploys a postgresql database
-func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Clientset, namespace string, name string, database string, user string, password string) *DbData {
+func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
 	log.Info("Deploying postgresql database " + name)
 
-	err := k8sclient.Create(context.TODO(), postgresqlPersistentVolumeClaim(namespace, name))
+	err := suiteCtx.K8sClient.Create(context.TODO(), postgresqlPersistentVolumeClaim(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Create(context.TODO(), postgresqlDeployment(namespace, name, database, user, password))
-	Expect(err).ToNot(HaveOccurred())
-	err = k8sclient.Create(context.TODO(), postgresqlService(namespace, name))
+	if suiteCtx.IsOpenshift {
+		err = suiteCtx.K8sClient.Create(context.TODO(), openshiftPostgresqlDeployment(namespace, name, database, user, password))
+		Expect(err).ToNot(HaveOccurred())
+	} else {
+		err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlDeployment(namespace, name, database, user, password))
+		Expect(err).ToNot(HaveOccurred())
+	}
+	err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlService(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for postgresql database to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -111,7 +116,7 @@ func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	svc, err := clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	dbdata := &DbData{
 		Name:          name,
@@ -123,7 +128,6 @@ func DeployPostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 		Password:      password,
 	}
 	return dbdata
-	// return "jdbc:postgresql://" + svc.Spec.ClusterIP + ":5432/" + database
 }
 
 //GetPostgresqlDatabasePod gets the database pod from the name given when created
@@ -264,6 +268,81 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 							},
 						},
 					},
+				},
+			},
+		},
+	}
+}
+
+func openshiftPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+	labels := map[string]string{"app": name}
+	var replicas int32 = 1
+	var readinessProbe string = "PGPASSWORD=" + password + " /usr/bin/psql -w -U " + user + " -d " + database + " -c 'SELECT 1'"
+	return &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:    labels,
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            name,
+							Image:           "quay.io/debezium/example-postgres-ocp:latest",
+							ImagePullPolicy: corev1.PullAlways,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "POSTGRESQL_DATABASE",
+									Value: database,
+								},
+								{
+									Name:  "POSTGRESQL_PASSWORD",
+									Value: password,
+								},
+								{
+									Name:  "POSTGRESQL_USER",
+									Value: user,
+								},
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 5432,
+									Name:          "postgresql",
+									Protocol:      "TCP",
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"/bin/sh", "-i", "-c", readinessProbe},
+									},
+								},
+								InitialDelaySeconds: 5,
+								TimeoutSeconds:      1,
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 30,
+								TimeoutSeconds:      1,
+							},
+							TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+							TerminationMessagePath:   "/dev/termination-log",
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyAlways,
 				},
 			},
 		},
