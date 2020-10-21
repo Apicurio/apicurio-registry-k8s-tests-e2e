@@ -9,7 +9,7 @@ on:
 
 jobs:
   tests:
-    name: Apicurio Registry Tests
+    name: Kubernetes Tests
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false

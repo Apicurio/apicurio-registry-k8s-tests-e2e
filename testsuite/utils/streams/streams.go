@@ -98,17 +98,19 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 		minisr = "2"
 	}
 	var kafkaClusterManifest string = ""
+	kindBoostrapHost := "bootstrap.127.0.0.1.nip.io"
 	if exposeExternal {
-		boostrapHost := "bootstrap.127.0.0.1.nip.io"
 		brokerHost := "broker-0.127.0.0.1.nip.io"
-		//TODO adapt this to work on openshift
-		clusterInfo.ExternalBootstrapServers = boostrapHost + ":443"
+		template := "kafka-cluster-external-template.yaml"
+		if suiteCtx.IsOpenshift {
+			template = "kafka-cluster-external-ocp-template.yaml"
+		}
 
 		kafkaClusterManifestFile := utils.Template("kafka-cluster",
-			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-external-template.yaml",
+			utils.SuiteProjectDir+"/kubefiles/"+template,
 			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
 			utils.Replacement{Old: "{NAME}", New: name},
-			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: boostrapHost},
+			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: kindBoostrapHost},
 			utils.Replacement{Old: "{BROKER_HOST}", New: brokerHost},
 		)
 		kafkaClusterManifest = kafkaClusterManifestFile.Name()
@@ -160,6 +162,15 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 	kubernetescli.GetDeployments(namespace)
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
+
+	clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
+	if suiteCtx.IsOpenshift {
+		route, err := suiteCtx.OcpRouteClient.Routes(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
+		host := route.Status.Ingress[0].Host
+		clusterInfo.ExternalBootstrapServers = host + ":443"
+	}
 
 	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())

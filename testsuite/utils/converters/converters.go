@@ -119,16 +119,25 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	var registryInternalURL string = "http://" + testContext.RegistryInternalHost + ":" + testContext.RegistryInternalPort + "/api/"
 	var debeziumTopic string = "dbserver2.todo.todo"
+	extraConfig := map[string]interface{}{
+		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
+		"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
+		"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
+		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
+	}
+	if suiteCtx.IsOpenshift {
+		// because we are using a different postgres image when running on openshift
+		// the postgres image we are using is provided by debezium, and the image we are using is prepared to us pgoutput replication
+		extraConfig["plugin.name"] = "pgoutput"
+	} else {
+		// the postgres image we use for kubernetes is as well provided by debezium and it's configured to work with decoderbufs
+		extraConfig["plugin.name"] = "decoderbufs"
+	}
 	createDebeziumJdbcConnector(debeziumURL,
 		"my-connector-avro",
 		"io.apicurio.registry.utils.converter.AvroConverter",
 		registryInternalURL,
-		map[string]interface{}{
-			"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-			"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
-			"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-			"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
-		},
+		extraConfig,
 	)
 
 	expectedRecords := 2
@@ -163,6 +172,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 			break
 		}
 		log.Info("kafka message received")
+		log.Info(string(m.Value))
 		records = append(records, &m)
 		if len(records) >= expectedRecords {
 			break
@@ -175,8 +185,6 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	}
 
 	Expect(len(records)).To(BeIdenticalTo(expectedRecords))
-	// log.Info(string(records[0].Key))
-	// log.Info(string(records[0].Value))
 
 	Expect(records[0].Key[0]).To(Equal(byte(0)))
 	Expect(records[0].Value[0]).To(Equal(byte(0)))
@@ -185,7 +193,6 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	artifacts, err := apicurio.ListArtifacts()
 	Expect(err).ToNot(HaveOccurred())
 	log.Info("Artifacts after debezium are " + strings.Join(artifacts, ", "))
-	Expect(len(artifacts)).To(BeIdenticalTo(2))
 	Expect(artifacts).Should(ContainElements(debeziumTopic+"-key", debeziumTopic+"-value"))
 
 }

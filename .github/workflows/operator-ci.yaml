@@ -7,7 +7,7 @@ on:
 
 jobs:
   tests:
-    name: Apicurio Registry Operator Tests
+    name: Kubernetes Tests
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout Code
