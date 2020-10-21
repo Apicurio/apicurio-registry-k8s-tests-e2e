@@ -51,6 +51,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 
 	var _ = It("backup and restore", func() {
 		ctx := &types.TestContext{}
+		ctx.RegistryNamespace = utils.OperatorNamespace
 		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	})
