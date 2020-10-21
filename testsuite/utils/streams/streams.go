@@ -163,13 +163,15 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
-	if suiteCtx.IsOpenshift {
-		route, err := suiteCtx.OcpRouteClient.Routes(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
-		Expect(err).ToNot(HaveOccurred())
-		Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
-		host := route.Status.Ingress[0].Host
-		clusterInfo.ExternalBootstrapServers = host + ":443"
+	if exposeExternal {
+		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
+		if suiteCtx.IsOpenshift {
+			route, err := suiteCtx.OcpRouteClient.Routes(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
+			host := route.Status.Ingress[0].Host
+			clusterInfo.ExternalBootstrapServers = host + ":443"
+		}
 	}
 
 	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
