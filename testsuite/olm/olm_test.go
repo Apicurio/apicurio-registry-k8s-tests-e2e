@@ -13,6 +13,7 @@ import (
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 
@@ -54,7 +55,7 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 120 * time.Second
+	timeout := 180 * time.Second
 	log.Info("Waiting for catalog source to be ready", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		catalogSource, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
@@ -68,6 +69,7 @@ func installOperatorOLM() {
 		}
 		return false, nil
 	})
+	kubernetescli.GetPods(catalogSourceNamespace)
 	Expect(err).ToNot(HaveOccurred())
 
 	//operator-group
