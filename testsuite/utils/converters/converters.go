@@ -140,11 +140,6 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		extraConfig,
 	)
 
-	expectedRecords := 2
-	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
-	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
-	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
-
 	dialer := &kafka.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
@@ -159,6 +154,11 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		Topic:   debeziumTopic,
 		Dialer:  dialer,
 	})
+
+	expectedRecords := 2
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
 
 	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
 
