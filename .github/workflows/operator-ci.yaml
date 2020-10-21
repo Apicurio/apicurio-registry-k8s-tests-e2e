@@ -1,4 +1,4 @@
-name: Apicurio Registry Operator Kubernetes Tests
+name: Apicurio Registry Operator Tests
 on:
   push:
     branches: [master]
@@ -7,7 +7,7 @@ on:
 
 jobs:
   tests:
-    name: Apicurio Registry Operator Kubernetes Tests
+    name: Apicurio Registry Operator Tests
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout Code
@@ -18,7 +18,7 @@ jobs:
 
       - name: Collect logs
         if: failure()
-        run: ./.github/scripts/collect_kubernetes_logs.sh
+        run: TEST_ID=operator ./.github/scripts/collect_kubernetes_logs.sh
 
       - name: Upload tests logs artifacts
         if: failure()

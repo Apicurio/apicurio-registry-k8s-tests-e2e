@@ -1,4 +1,4 @@
-name: Apicurio Registry Kubernetes Tests
+name: Apicurio Registry Tests
 on:
   push:
     branches: [master]
@@ -9,7 +9,7 @@ on:
 
 jobs:
   tests:
-    name: Apicurio Registry Kubernetes Tests
+    name: Apicurio Registry Tests
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
@@ -38,7 +38,7 @@ jobs:
 
       - name: Collect logs
         if: failure()
-        run: ./.github/scripts/collect_kubernetes_logs.sh
+        run: TEST_ID=${{ matrix.test_profile }} ./.github/scripts/collect_kubernetes_logs.sh
 
       - name: Upload tests logs artifacts
         if: failure()
