@@ -145,7 +145,7 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
+	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().Format("20060102150405")))
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
 		[]Reporter{printer.NewlineReporter{}, junitReporter},

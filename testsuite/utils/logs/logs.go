@@ -24,6 +24,23 @@ var log = logf.Log.WithName("logs")
 
 func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace string) {
 
+	log.Info("Collecting operator logs", "suite", suiteID, "namespace", namespace)
+
+	logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/operator/namespaces/" + namespace + "/"
+	os.MkdirAll(logsDir, os.ModePerm)
+
+	//first we collect all pods statuses and cluster events
+	currentPodsFile, err := os.Create(logsDir + "pods.log")
+	Expect(err).ToNot(HaveOccurred())
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace)
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace, "-o", "yaml")
+	defer currentPodsFile.Close()
+
+	eventsFile, err := os.Create(logsDir + "events.log")
+	Expect(err).ToNot(HaveOccurred())
+	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", namespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
+	defer eventsFile.Close()
+
 	operatorDeployment, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
@@ -49,10 +66,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 		buf := new(bytes.Buffer)
 		_, err = io.Copy(buf, podLogs)
 		Expect(err).ToNot(HaveOccurred())
-		// str := buf.String()
 
-		logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/operator/namespaces/" + pod.Namespace + "/"
-		os.MkdirAll(logsDir, os.ModePerm)
 		logFile := logsDir + pod.Name + ".log"
 		log.Info("Storing operator logs", "file", logFile)
 		err = ioutil.WriteFile(logFile, buf.Bytes(), os.ModePerm)
