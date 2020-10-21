@@ -72,11 +72,11 @@ func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	}
 }
 
-func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset) {
+func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace string) {
 	timeout := 120 * time.Second
 	log.Info("Waiting for operator to be deployed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -87,15 +87,15 @@ func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset) {
 		}
 		return false, nil
 	})
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset) {
+func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace string) {
 	timeout := 60 * time.Second
 	log.Info("Waiting for operator to be removed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -110,8 +110,8 @@ func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func isOperatorDeployed(clientset *kubernetes.Clientset) (bool, error) {
-	od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+func isOperatorDeployed(clientset *kubernetes.Clientset, namespace string) (bool, error) {
+	od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
@@ -124,14 +124,14 @@ func isOperatorDeployed(clientset *kubernetes.Clientset) (bool, error) {
 	return false, nil
 }
 
-func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Duration, deploymentName string, expectedReplicas int) {
+func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Duration, namespace string, deploymentName string, expectedReplicas int) {
 	if expectedReplicas == 0 {
 		expectedReplicas = 1
 	}
 	// timeout := 120 * time.Second
 	log.Info("Waiting for deployment "+deploymentName+" to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(deploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -142,7 +142,7 @@ func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Durati
 		}
 		return false, nil
 	})
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 }
 

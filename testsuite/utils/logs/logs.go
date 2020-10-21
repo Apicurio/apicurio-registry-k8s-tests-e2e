@@ -22,9 +22,9 @@ import (
 
 var log = logf.Log.WithName("logs")
 
-func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
+func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace string) {
 
-	operatorDeployment, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+	operatorDeployment, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
 			log.Info("Skipping storing operator logs because operator deployment not found")
@@ -37,7 +37,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 		return
 	}
 	labelsSet := labels.Set(operatorDeployment.Spec.Selector.MatchLabels)
-	pods, err := clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, pod := range pods.Items {
@@ -61,7 +61,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string) {
 }
 
 //SaveTestPodsLogs stores logs of all pods in OperatorNamespace
-func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testDescription ginkgo.GinkgoTestDescription) {
+func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, namespace string, testDescription ginkgo.GinkgoTestDescription) {
 
 	testName := ""
 	for _, comp := range testDescription.ComponentTexts {
@@ -71,22 +71,22 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, testDescr
 
 	log.Info("Collecting test logs", "suite", suiteID, "test", testName)
 
-	pods, err := clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
-	logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/" + testName + "/namespaces/" + utils.OperatorNamespace + "/"
+	logsDir := utils.SuiteProjectDir + "/tests-logs/" + suiteID + "/" + testName + "/namespaces/" + namespace + "/"
 	os.MkdirAll(logsDir, os.ModePerm)
 
 	//first we collect all pods statuses and cluster events
 	currentPodsFile, err := os.Create(logsDir + "pods.log")
 	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", utils.OperatorNamespace)
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", utils.OperatorNamespace, "-o", "yaml")
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace)
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace, "-o", "yaml")
 	defer currentPodsFile.Close()
 
 	eventsFile, err := os.Create(logsDir + "events.log")
 	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", utils.OperatorNamespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
+	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", namespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
 	defer eventsFile.Close()
 
 	//then collect logs for each running pod
