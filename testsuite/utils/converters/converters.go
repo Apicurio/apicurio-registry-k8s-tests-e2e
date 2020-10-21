@@ -155,7 +155,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	var records []*kafka.Message = make([]*kafka.Message, 0)
 	for {
-		timeout, cf := context.WithTimeout(context.Background(), 30*time.Second)
+		timeout, cf := context.WithTimeout(context.Background(), 60*time.Second)
 		m, err := r.ReadMessage(timeout)
 		cf()
 		if err != nil {
