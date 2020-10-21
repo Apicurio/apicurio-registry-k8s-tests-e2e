@@ -155,9 +155,9 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		Dialer:  dialer,
 	})
 
-	expectedRecords := 2
+	expectedRecords := 1
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
-	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
+	// executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
 
 	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
