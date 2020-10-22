@@ -14,6 +14,7 @@ const (
 	OLMCatalogSourceImageEnvVar     = "E2E_OLM_CATALOG_SOURCE_IMAGE"
 	OperatorBundlePathEnvVar        = "E2E_OPERATOR_BUNDLE_PATH"
 	StrimziOperatorBundlePathEnvVar = "E2E_STRIMZI_BUNDLE_PATH"
+	OLMCatalogSourceNamespaceEnvVar = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"
 
 	OperatorNamespace      = "apicurio-registry-e2e"
 	OperatorDeploymentName = "apicurio-registry-operator"
@@ -44,3 +45,6 @@ var ApicurioTestsProfile string = os.Getenv(ApicurioTestsProfileEnvVar)
 
 //StrimziOperatorBundlePath value of StrimziOperatorBundlePathEnvVar
 var StrimziOperatorBundlePath string = os.Getenv(StrimziOperatorBundlePathEnvVar)
+
+//OLMCatalogSourceNamespace value of OLMCatalogSourceNamespaceEnvVar
+var OLMCatalogSourceNamespace string = os.Getenv(OLMCatalogSourceNamespaceEnvVar)

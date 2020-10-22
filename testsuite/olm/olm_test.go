@@ -32,9 +32,9 @@ var _ = Describe("olm installation", func() {
 const operatorSubscriptionName string = "apicurio-registry-sub"
 const operatorGroupName string = "apicurio-registry-operator-group"
 const catalogSourceName string = "apicurio-registry-catalog"
-const catalogSourceNamespace string = utils.OperatorNamespace
 const operatorNamespace string = utils.OperatorNamespace
 
+var catalogSourceNamespace string
 var operatorCSV string
 
 func logPodsAll() {
@@ -46,6 +46,14 @@ func installOperatorOLM() {
 	if utils.OLMCatalogSourceImage == "" {
 		Expect(errors.New("Env var " + utils.OLMCatalogSourceImageEnvVar + " is required")).ToNot(HaveOccurred())
 	}
+
+	if utils.OLMCatalogSourceNamespace == "" {
+		catalogSourceNamespace = utils.OperatorNamespace
+	} else {
+		catalogSourceNamespace = utils.OLMCatalogSourceNamespace
+		kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, catalogSourceNamespace)
+	}
+	log.Info("Using catalog source namespace " + catalogSourceNamespace)
 
 	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
