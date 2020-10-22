@@ -16,14 +16,13 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
 var log = logf.Log.WithName("testcase")
 
 //CommonTestCases declares a common set of ginkgo testcases that olm and operator bundle testsuites share
-func CommonTestCases(suiteCtx *suite.SuiteContext) {
+func CommonTestCases(suiteCtx *types.SuiteContext) {
 	var _ = DescribeTable("registry deployment",
 		func(testContext *types.TestContext) {
 			executeTestCase(suiteCtx, testContext)
@@ -37,14 +36,14 @@ func CommonTestCases(suiteCtx *suite.SuiteContext) {
 }
 
 //BundleOnlyTestCases contains test cases that will be only executed for operator bundle installation
-func BundleOnlyTestCases(suiteCtx *suite.SuiteContext) {
+func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 	if !suiteCtx.OnlyTestOperator {
 		var _ = DescribeTable("kafka connect converters",
 			func(testContext *types.TestContext) {
 				executeConvertersTestCase(suiteCtx, testContext)
 			},
 
-			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
+			Entry("postgres", &types.TestContext{Storage: utils.StorageJpa}),
 			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
 			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 		)
@@ -52,32 +51,38 @@ func BundleOnlyTestCases(suiteCtx *suite.SuiteContext) {
 
 	var _ = It("backup and restore", func() {
 		ctx := &types.TestContext{}
+		ctx.RegistryNamespace = utils.OperatorNamespace
 		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	})
 }
 
 //ExecuteTestCase common logic to test operator deploying an instance of ApicurioRegistry with one of it's storage variants
-func executeTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
+func executeTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 	executeTestOnStorage(suiteCtx, testContext, func() {
 		if !suiteCtx.OnlyTestOperator {
-			functional.ExecuteRegistryFunctionalTests(testContext)
+			functional.ExecuteRegistryFunctionalTests(suiteCtx, testContext)
 		} else {
 			functional.BasicRegistryAPITest(testContext)
 		}
 	})
 }
 
-func executeConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
+func executeConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 	executeTestOnStorage(suiteCtx, testContext, func() {
 		converters.ConvertersTestCase(suiteCtx, testContext)
 	})
 }
 
 //ExecuteTestOnStorage extensible logic to test apicurio registry functionality deployed with one of it's storage variants
-func executeTestOnStorage(suiteCtx *suite.SuiteContext, testContext *types.TestContext, testFunction func()) {
+func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestContext, testFunction func()) {
 	if testContext.ID == "" {
 		testContext.ID = testContext.Storage
+	}
+
+	//implement here support for multiple namespaces
+	if testContext.RegistryNamespace == "" {
+		testContext.RegistryNamespace = utils.OperatorNamespace
 	}
 
 	defer cleanRegistryDeployment(suiteCtx, testContext)
@@ -87,7 +92,7 @@ func executeTestOnStorage(suiteCtx *suite.SuiteContext, testContext *types.TestC
 	testFunction()
 }
 
-func deployRegistryStorage(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func deployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	if ctx.Storage == utils.StorageJpa {
 		jpa.DeployJpaRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageStreams {
@@ -100,7 +105,7 @@ func deployRegistryStorage(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 }
 
 //clean namespace, only thing that can be left is registry operator
-func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContext) error {
+func cleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) error {
 
 	log.Info("-----------------------------------------------------------")
 
@@ -119,9 +124,9 @@ func cleanRegistryDeployment(suiteCtx *suite.SuiteContext, ctx *types.TestContex
 	return nil
 }
 
-func saveLogsAndExecuteTestCleanups(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func saveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	testDescription := CurrentGinkgoTestDescription()
-	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, testDescription)
+	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testDescription)
 
 	ctx.ExecuteCleanups()
 }

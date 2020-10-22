@@ -6,7 +6,6 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
@@ -17,15 +16,14 @@ var log = logf.Log.WithName("infinispan")
 var registryName string
 
 //DeployInfinispanRegistry deploys an ApicurioRegistry CR using infinispan as storage
-func DeployInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	log.Info("Deploying apicurio registry")
 
 	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: utils.OperatorNamespace,
-			Name:      registryName,
+			Name: registryName,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -43,8 +41,8 @@ func DeployInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestConte
 }
 
 //RemoveInfinispanRegistry uninstalls registry CR
-func RemoveInfinispanRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func RemoveInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	apicurioutils.DeleteRegistryAndWait(suiteCtx, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
 
 }

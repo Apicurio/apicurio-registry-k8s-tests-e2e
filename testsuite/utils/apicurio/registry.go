@@ -18,7 +18,6 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
 )
@@ -26,31 +25,36 @@ import (
 var log = logf.Log.WithName("apicurio")
 
 //CreateRegistryAndWait common logic to create one ApicurioRegistry and wait for the deployment to be ready
-func CreateRegistryAndWait(suiteCtx *suite.SuiteContext, ctx *types.TestContext, registry *apicurio.ApicurioRegistry) {
+func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext, registry *apicurio.ApicurioRegistry) {
 
 	ctx.RegistryName = registry.Name
 
 	if !suiteCtx.IsOpenshift {
-		// this is just a workaround to work with Kind nginx ingress
-		registry.Spec.Deployment.Host = "localhost"
-		ctx.RegistryHost = "localhost"
+		registry.Spec.Deployment.Host = registry.Name + ".127.0.0.1.nip.io"
+		ctx.RegistryHost = registry.Name + ".127.0.0.1.nip.io"
 		ctx.RegistryPort = "80"
+	}
+
+	//TODO review
+	//should be the caller who decides the namespace to create the registry or should it be based on the test context?
+	if registry.Namespace == "" {
+		registry.Namespace = ctx.RegistryNamespace
 	}
 
 	err := suiteCtx.K8sClient.Create(context.TODO(), registry)
 	Expect(err).ToNot(HaveOccurred())
 
-	waitForRegistryReady(suiteCtx, registry.Name)
+	waitForRegistryReady(suiteCtx, registry.Namespace, registry.Name)
+
+	labelsSet := labels.Set(map[string]string{"app": registry.Name})
 
 	if suiteCtx.IsOpenshift {
-		kubernetescli.Execute("get", "route", "-n", utils.OperatorNamespace)
-
-		labelsSet := labels.Set(map[string]string{"app": registry.Name})
+		kubernetescli.Execute("get", "route", "-n", ctx.RegistryNamespace)
 
 		timeout := 60 * time.Second
 		log.Info("Waiting for registry route to be ready", "timeout", timeout)
 		err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-			routes, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -61,9 +65,9 @@ func CreateRegistryAndWait(suiteCtx *suite.SuiteContext, ctx *types.TestContext,
 			}
 			return false, nil
 		})
-		kubernetescli.Execute("get", "route", "-n", utils.OperatorNamespace)
+		kubernetescli.Execute("get", "route", "-n", ctx.RegistryNamespace)
 		Expect(err).ToNot(HaveOccurred())
-		routes, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(routes.Items)).To(BeIdenticalTo(1))
 		Expect(len(routes.Items[0].Status.Ingress)).ToNot(BeIdenticalTo(0))
@@ -73,9 +77,18 @@ func CreateRegistryAndWait(suiteCtx *suite.SuiteContext, ctx *types.TestContext,
 		ctx.RegistryPort = "80"
 	}
 
+	//TODO fix this, operator usability problem, service name should be consistent
+	svcs, err := suiteCtx.Clientset.CoreV1().Services(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(svcs.Items)).To(BeIdenticalTo(1))
+	reg := svcs.Items[0]
+
+	ctx.RegistryInternalHost = reg.Name + "." + reg.Namespace
+	ctx.RegistryInternalPort = strconv.Itoa(int(reg.Spec.Ports[0].Port))
+
 }
 
-func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
+func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, registryName string) {
 
 	// var registryDeploymentName string = registryName
 
@@ -84,7 +97,7 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 	apicurioRegistry := apicurio.ApicurioRegistry{}
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		err := suiteCtx.K8sClient.Get(context.TODO(),
-			kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace},
+			kubetypes.NamespacedName{Name: registryName, Namespace: namespace},
 			&apicurioRegistry)
 
 		if err != nil {
@@ -101,7 +114,7 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 		// }
 		return true, nil
 	})
-	kubernetescli.Execute("get", "apicurioregistry", "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("get", "apicurioregistry", "-n", namespace)
 	Expect(err).ToNot(HaveOccurred())
 
 	var registryReplicas int32 = 1
@@ -115,7 +128,7 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
 		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -126,7 +139,7 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 				}
 			}
 		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -139,16 +152,16 @@ func waitForRegistryReady(suiteCtx *suite.SuiteContext, registryName string) {
 		}
 		return false, nil
 	})
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 	log.Info("Registry deployment is ready")
 }
 
 //DeleteRegistryAndWait removes one ApicurioRegistry deployment and ensures it's deleted waiting
-func DeleteRegistryAndWait(suiteCtx *suite.SuiteContext, registryName string) {
+func DeleteRegistryAndWait(suiteCtx *types.SuiteContext, namespace string, registryName string) {
 
 	obj := &apicurio.ApicurioRegistry{}
-	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace}, obj)
+	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: namespace}, obj)
 	if err != nil && !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -161,7 +174,7 @@ func DeleteRegistryAndWait(suiteCtx *suite.SuiteContext, registryName string) {
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		existing := apicurio.ApicurioRegistry{}
 		err := suiteCtx.K8sClient.Get(context.TODO(),
-			kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace},
+			kubetypes.NamespacedName{Name: registryName, Namespace: namespace},
 			&existing)
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -171,35 +184,21 @@ func DeleteRegistryAndWait(suiteCtx *suite.SuiteContext, registryName string) {
 		}
 		return false, nil
 	})
-	kubernetescli.Execute("get", "apicurioregistry", "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("get", "apicurioregistry", "-n", namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = waitRegistryDeploymentDeleted(suiteCtx, registryName)
-	//operator bug should be fixed
-	// if err != nil {
-	// 	log.Info("Verify operator, possible bug, registry deployment is not removed after deleteing ApirucioRegistry CR, manually removing it")
-	// 	labelsSet := labels.Set(map[string]string{"app": registryName})
-	// 	deployments, err := clientset.AppsV1().Deployments(OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-	// 	Expect(err).ToNot(HaveOccurred())
-	// 	Expect(len(deployments.Items)).To(Equal(1))
-	// 	deployment := deployments.Items[0]
-	// 	err = clientset.AppsV1().Deployments(OperatorNamespace).Delete(deployment.Name, &metav1.DeleteOptions{})
-	// 	Expect(err).ToNot(HaveOccurred())
-
-	// 	err = waitRegistryDeploymentDeleted(clientset, registryName)
-	// 	Expect(err).ToNot(HaveOccurred())
-	// }
+	err = waitRegistryDeploymentDeleted(suiteCtx, namespace, registryName)
 
 }
 
-func waitRegistryDeploymentDeleted(suiteCtx *suite.SuiteContext, registryName string) error {
+func waitRegistryDeploymentDeleted(suiteCtx *types.SuiteContext, namespace string, registryName string) error {
 	timeout := 30 * time.Second
 	log.Info("Waiting for registry deployment to be removed", "timeout", timeout)
 	return wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
 		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return true, nil
@@ -210,7 +209,7 @@ func waitRegistryDeploymentDeleted(suiteCtx *suite.SuiteContext, registryName st
 				return true, nil
 			}
 		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return true, nil
@@ -226,9 +225,9 @@ func waitRegistryDeploymentDeleted(suiteCtx *suite.SuiteContext, registryName st
 }
 
 //ExistsRegistry verifies if the ApicurioRegistry CR named registryName exists
-func ExistsRegistry(suiteCtx *suite.SuiteContext, registryName string) bool {
+func ExistsRegistry(suiteCtx *types.SuiteContext, namespace string, registryName string) bool {
 	obj := &apicurio.ApicurioRegistry{}
-	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: utils.OperatorNamespace}, obj)
+	err := suiteCtx.K8sClient.Get(context.TODO(), kubetypes.NamespacedName{Name: registryName, Namespace: namespace}, obj)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false
@@ -236,15 +235,4 @@ func ExistsRegistry(suiteCtx *suite.SuiteContext, registryName string) bool {
 		Expect(err).ToNot(HaveOccurred())
 	}
 	return obj.Name == registryName
-}
-
-//TODO fix this, operator usability problem, service name should be consistent
-func GetRegistryInternalUrl(suiteCtx *suite.SuiteContext, registryName string) string {
-	labelsSet := labels.Set(map[string]string{"app": registryName})
-	svcs, err := suiteCtx.Clientset.CoreV1().Services(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(svcs.Items)).To(BeIdenticalTo(1))
-	reg := svcs.Items[0]
-
-	return "http://" + reg.Name + ":" + strconv.Itoa(int(reg.Spec.Ports[0].Port))
 }

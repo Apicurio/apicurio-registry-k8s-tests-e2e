@@ -24,34 +24,33 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
 	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/openshift"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
-var log = logf.Log.WithName("postgresql")
+var log = logf.Log.WithName("converters")
 
 var debeziumName string = "apicurio-debezium"
 var labels map[string]string = map[string]string{"apicurio": "qe"}
 
-var databaseName = "test-db"
+var databaseName = "testdb"
 var databaseUser = "testuser"
 var databasePassword = "testpwd"
 
-func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestContext) {
+func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 
-	apicurioDebeziumImage := &suite.OcpImageReference{
+	apicurioDebeziumImage := &types.OcpImageReference{
 		ExternalImage: "localhost:5000/apicurio-debezium:latest",
 		InternalImage: "localhost:5000/apicurio-debezium:latest",
 	}
 
 	if suiteCtx.IsOpenshift {
-		apicurioDebeziumImage = suiteCtx.OcpInternalImage(utils.OperatorNamespace, "apicurio-debezium", "latest")
+		apicurioDebeziumImage = openshift.OcpInternalImage(suiteCtx, testContext.RegistryNamespace, "apicurio-debezium", "latest")
 	}
 
 	apicurioDebeziumDistroDir := utils.SuiteProjectDir + "/scripts/converters"
@@ -59,77 +58,87 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo *streams.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, 1, true, kafkaClusterName, []string{})
+	var kafkaClusterInfo *streams.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
-			streams.RemoveKafkaCluster(suiteCtx.Clientset, kafkaClusterName, []string{})
-			streams.RemoveStrimziOperator(suiteCtx.Clientset)
+			streams.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterName, []string{})
+			streams.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
 		}
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
 
-	jpa.DeployPostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, databaseName, databaseName, databaseUser, databasePassword)
+	jpa.DeployPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
-		jpa.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, databaseName)
+		jpa.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName)
 	}
 	testContext.RegisterCleanup(postgresCleanup)
 
 	log.Info("Deploying debezium")
-	err := suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
+	err := suiteCtx.K8sClient.Create(context.TODO(), debeziumDeployment(testContext.RegistryNamespace, apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
 	Expect(err).ToNot(HaveOccurred())
-	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService())
+	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService(testContext.RegistryNamespace))
 	Expect(err).ToNot(HaveOccurred())
 	if suiteCtx.IsOpenshift {
-		_, err = suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Create(ocpDebeziumRoute())
+		_, err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Create(ocpDebeziumRoute(testContext.RegistryNamespace))
 		Expect(err).ToNot(HaveOccurred())
 	} else {
-		err = suiteCtx.K8sClient.Create(context.TODO(), kindDebeziumIngress())
+		err = suiteCtx.K8sClient.Create(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	debeziumCleanup := func() {
 		log.Info("Removing debezium")
-		err := suiteCtx.K8sClient.Delete(context.TODO(), debeziumDeployment(apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
+		err := suiteCtx.K8sClient.Delete(context.TODO(), debeziumDeployment(testContext.RegistryNamespace, apicurioDebeziumImage.InternalImage, kafkaClusterInfo.BootstrapServers))
 		Expect(err).ToNot(HaveOccurred())
-		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService())
+		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService(testContext.RegistryNamespace))
 		Expect(err).ToNot(HaveOccurred())
 		if suiteCtx.IsOpenshift {
-			err = suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Delete(debeziumName, &metav1.DeleteOptions{})
+			err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Delete(debeziumName, &metav1.DeleteOptions{})
 			Expect(err).ToNot(HaveOccurred())
 		} else {
-			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress())
+			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
 			Expect(err).ToNot(HaveOccurred())
 		}
 	}
 	testContext.RegisterCleanup(debeziumCleanup)
 
-	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, debeziumName, 1)
+	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, testContext.RegistryNamespace, debeziumName, 1)
 
 	debeziumURL := "http://localhost:80/debezium"
 	if suiteCtx.IsOpenshift {
-		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(utils.OperatorNamespace).Get(debeziumName, metav1.GetOptions{})
+		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(debeziumName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		debeziumURL = "http://" + debeziumRoute.Status.Ingress[0].Host
 	}
 
-	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, databaseName).Name
-	executeSQL(postgresqlPodName, "drop schema if exists todo cascade")
-	executeSQL(postgresqlPodName, "create schema todo")
-	executeSQL(postgresqlPodName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
-	executeSQL(postgresqlPodName, "alter table todo.Todo replica identity full")
+	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, testContext.RegistryNamespace, databaseName).Name
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "drop schema if exists todo cascade")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "create schema todo")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "alter table todo.Todo replica identity full")
 
+	var registryInternalURL string = "http://" + testContext.RegistryInternalHost + ":" + testContext.RegistryInternalPort + "/api/"
 	var debeziumTopic string = "dbserver2.todo.todo"
-	createDebeziumJdbcConnector(debeziumURL, "my-connector-avro", "io.apicurio.registry.utils.converter.AvroConverter", apicurio.GetRegistryInternalUrl(suiteCtx, testContext.RegistryName)+"/api/", map[string]interface{}{
+	extraConfig := map[string]interface{}{
 		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
 		"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
 		"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
 		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
-	})
-
-	expectedRecords := 2
-	executeSQL(postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
-	executeSQL(postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
-	executeSQL(postgresqlPodName, "select * from todo.Todo")
+	}
+	if suiteCtx.IsOpenshift {
+		// because we are using a different postgres image when running on openshift
+		// the postgres image we are using is provided by debezium, and the image we are using is prepared to us pgoutput replication
+		extraConfig["plugin.name"] = "pgoutput"
+	} else {
+		// the postgres image we use for kubernetes is as well provided by debezium and it's configured to work with decoderbufs
+		extraConfig["plugin.name"] = "decoderbufs"
+	}
+	createDebeziumJdbcConnector(debeziumURL,
+		"my-connector-avro",
+		"io.apicurio.registry.utils.converter.AvroConverter",
+		registryInternalURL,
+		extraConfig,
+	)
 
 	dialer := &kafka.Dialer{
 		Timeout:   10 * time.Second,
@@ -146,11 +155,16 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 		Dialer:  dialer,
 	})
 
+	expectedRecords := 1
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
+	// executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
+	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
+
 	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
 
 	var records []*kafka.Message = make([]*kafka.Message, 0)
 	for {
-		timeout, cf := context.WithTimeout(context.Background(), 30*time.Second)
+		timeout, cf := context.WithTimeout(context.Background(), 60*time.Second)
 		m, err := r.ReadMessage(timeout)
 		cf()
 		if err != nil {
@@ -158,6 +172,7 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 			break
 		}
 		log.Info("kafka message received")
+		log.Info(string(m.Value))
 		records = append(records, &m)
 		if len(records) >= expectedRecords {
 			break
@@ -170,8 +185,6 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	}
 
 	Expect(len(records)).To(BeIdenticalTo(expectedRecords))
-	// log.Info(string(records[0].Key))
-	// log.Info(string(records[0].Value))
 
 	Expect(records[0].Key[0]).To(Equal(byte(0)))
 	Expect(records[0].Value[0]).To(Equal(byte(0)))
@@ -180,7 +193,6 @@ func ConvertersTestCase(suiteCtx *suite.SuiteContext, testContext *types.TestCon
 	artifacts, err := apicurio.ListArtifacts()
 	Expect(err).ToNot(HaveOccurred())
 	log.Info("Artifacts after debezium are " + strings.Join(artifacts, ", "))
-	Expect(len(artifacts)).To(BeIdenticalTo(2))
 	Expect(artifacts).Should(ContainElements(debeziumTopic+"-key", debeziumTopic+"-value"))
 
 }
@@ -247,17 +259,17 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func executeSQL(podName string, sql string) {
-	kubernetescli.Execute("-n", utils.OperatorNamespace, "exec", podName, "--", "psql", "-d", databaseName, "-U", databaseUser, "-c", sql)
+func executeSQL(namespace string, podName string, sql string) {
+	kubernetescli.Execute("-n", namespace, "exec", podName, "--", "psql", "-d", databaseName, "-U", databaseUser, "-c", sql)
 }
 
-func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {
+func debeziumDeployment(namespace string, image string, bootstrapServers string) *v1.Deployment {
 	var replicas int32 = 1
 	return &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: namespace,
 		},
 		Spec: v1.DeploymentSpec{
 			Replicas: &replicas,
@@ -340,12 +352,12 @@ func debeziumDeployment(image string, bootstrapServers string) *v1.Deployment {
 	}
 }
 
-func debeziumService() *corev1.Service {
+func debeziumService(namespace string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: namespace,
 		},
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
@@ -361,12 +373,12 @@ func debeziumService() *corev1.Service {
 	}
 }
 
-func kindDebeziumIngress() *v1beta1.Ingress {
+func kindDebeziumIngress(namespace string) *v1beta1.Ingress {
 	return &v1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: namespace,
 			Annotations: map[string]string{
 				"nginx.ingress.kubernetes.io/rewrite-target": "/$2",
 			},
@@ -394,13 +406,13 @@ func kindDebeziumIngress() *v1beta1.Ingress {
 	}
 }
 
-func ocpDebeziumRoute() *routev1.Route {
+func ocpDebeziumRoute(namespace string) *routev1.Route {
 	var weigh int32 = 100
 	return &routev1.Route{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: namespace,
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",

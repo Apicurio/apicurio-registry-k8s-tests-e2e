@@ -18,7 +18,6 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
@@ -33,9 +32,9 @@ var registryKafkaTopics []string = []string{"storage-topic", "global-id-topic"}
 var registryName string
 
 //DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
-func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, 3, registryKafkaClusterName, registryKafkaTopics)
+	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, ctx.RegistryNamespace, 3, registryKafkaClusterName, registryKafkaTopics)
 
 	bootstrapServers := kafkaClusterInfo.BootstrapServers
 
@@ -44,8 +43,7 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: utils.OperatorNamespace,
-			Name:      registryName,
+			Name: registryName,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -64,15 +62,15 @@ func DeployStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext)
 }
 
 //RemoveStreamsRegistry uninstalls registry CR, kafka cluster and strimzi operator
-func RemoveStreamsRegistry(suiteCtx *suite.SuiteContext, ctx *types.TestContext) {
+func RemoveStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	defer os.Remove(bundlePath)
 
-	apicurioutils.DeleteRegistryAndWait(suiteCtx, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
 
-	RemoveKafkaCluster(suiteCtx.Clientset, registryKafkaClusterName, registryKafkaTopics)
+	RemoveKafkaCluster(suiteCtx.Clientset, ctx.RegistryNamespace, registryKafkaClusterName, registryKafkaTopics)
 
-	RemoveStrimziOperator(suiteCtx.Clientset)
+	RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
 
 }
 
@@ -83,14 +81,14 @@ type KafkaClusterInfo struct {
 	ExternalBootstrapServers string
 }
 
-func DeployKafkaCluster(suiteCtx *suite.SuiteContext, replicas int, name string, topics []string) *KafkaClusterInfo {
-	return DeployKafkaClusterV2(suiteCtx, replicas, false, name, topics)
+func DeployKafkaCluster(suiteCtx *types.SuiteContext, namespace string, replicas int, name string, topics []string) *KafkaClusterInfo {
+	return DeployKafkaClusterV2(suiteCtx, namespace, replicas, false, name, topics)
 }
 
 //DeployKafkaCluster deploys a kafka cluster and some topics, returns a flag to indicate if strimzi operator has been deployed(useful to know if it was already installed)
-func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExternal bool, name string, topics []string) *KafkaClusterInfo {
+func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replicas int, exposeExternal bool, name string, topics []string) *KafkaClusterInfo {
 
-	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset)
+	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset, namespace)
 
 	clusterInfo := &KafkaClusterInfo{StrimziDeployed: strimziDeployed}
 
@@ -100,24 +98,26 @@ func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExte
 		minisr = "2"
 	}
 	var kafkaClusterManifest string = ""
+	kindBoostrapHost := "bootstrap.127.0.0.1.nip.io"
 	if exposeExternal {
-		boostrapHost := "bootstrap.127.0.0.1.nip.io"
 		brokerHost := "broker-0.127.0.0.1.nip.io"
-		//TODO adapt this to work on openshift
-		clusterInfo.ExternalBootstrapServers = boostrapHost + ":443"
+		template := "kafka-cluster-external-template.yaml"
+		if suiteCtx.IsOpenshift {
+			template = "kafka-cluster-external-ocp-template.yaml"
+		}
 
 		kafkaClusterManifestFile := utils.Template("kafka-cluster",
-			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-external-template.yaml",
-			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
+			utils.SuiteProjectDir+"/kubefiles/"+template,
+			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
 			utils.Replacement{Old: "{NAME}", New: name},
-			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: boostrapHost},
+			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: kindBoostrapHost},
 			utils.Replacement{Old: "{BROKER_HOST}", New: brokerHost},
 		)
 		kafkaClusterManifest = kafkaClusterManifestFile.Name()
 	} else {
 		kafkaClusterManifestFile := utils.Template("kafka-cluster",
 			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
-			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
+			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
 			utils.Replacement{Old: "{NAME}", New: name},
 			utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
 			utils.Replacement{Old: "{MIN_ISR}", New: minisr},
@@ -126,12 +126,12 @@ func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExte
 	}
 
 	log.Info("Deploying kafka cluster " + name)
-	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", namespace)
 
 	for _, topic := range topics {
 		kafkaTopicManifestFile := utils.Template("kafka-topic-"+topic,
 			utils.SuiteProjectDir+"/kubefiles/kafka-topic-template.yaml",
-			utils.Replacement{Old: "{NAMESPACE}", New: utils.OperatorNamespace},
+			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
 			utils.Replacement{Old: "{TOPIC_NAME}", New: topic},
 			utils.Replacement{Old: "{CLUSTER_NAME}", New: name},
 			utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
@@ -140,7 +140,7 @@ func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExte
 		kafkaTopicManifest := kafkaTopicManifestFile.Name()
 
 		log.Info("Deploying kafka topic " + topic)
-		kubernetescli.Execute("apply", "-f", kafkaTopicManifest, "-n", utils.OperatorNamespace)
+		kubernetescli.Execute("apply", "-f", kafkaTopicManifest, "-n", namespace)
 	}
 
 	//wait for kafka cluster
@@ -148,7 +148,7 @@ func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExte
 	timeout := 4 * time.Minute
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := suiteCtx.Clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(name+"-entity-operator", metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(name+"-entity-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -159,20 +159,31 @@ func DeployKafkaClusterV2(suiteCtx *suite.SuiteContext, replicas int, exposeExte
 		}
 		return false, nil
 	})
-	kubernetescli.GetDeployments(utils.OperatorNamespace)
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetDeployments(namespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	svc, err := suiteCtx.Clientset.CoreV1().Services(utils.OperatorNamespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+	if exposeExternal {
+		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
+		if suiteCtx.IsOpenshift {
+			route, err := suiteCtx.OcpRouteClient.Routes(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
+			host := route.Status.Ingress[0].Host
+			clusterInfo.ExternalBootstrapServers = host + ":443"
+		}
+	}
+
+	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	bootstrapServers := svc.Spec.ClusterIP + ":9092"
 	clusterInfo.BootstrapServers = bootstrapServers
 	return clusterInfo
 }
 
-func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
+func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bool {
 
-	_, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+	_, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	} else if err == nil {
@@ -185,18 +196,18 @@ func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
 	if strings.HasPrefix(utils.StrimziOperatorBundlePath, "https://") {
 		bundlePath = "/tmp/strimzi-operator-bundle-" + strconv.Itoa(rand.Intn(1000)) + ".yaml"
 		utils.DownloadFile(bundlePath, utils.StrimziOperatorBundlePath)
-		utils.ExecuteCmdOrDie(false, "sed", "-i", "s/namespace: .*/namespace: "+utils.OperatorNamespace+"/", bundlePath)
+		utils.ExecuteCmdOrDie(false, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", bundlePath)
 	} else {
 		//TODO implement installing strimzi from local directory
 	}
 
-	kubernetescli.Execute("apply", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("apply", "-f", bundlePath, "-n", namespace)
 
 	// sh("oc wait deployment/strimzi-cluster-operator --for condition=available --timeout=180s")
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi operator to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -207,28 +218,28 @@ func deployStrimziOperator(clientset *kubernetes.Clientset) bool {
 		}
 		return false, nil
 	})
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 	return true
 }
 
 //RemoveKafkaCluster removes a kafka cluster
-func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []string) {
+func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, name string, topics []string) {
 
 	log.Info("Removing kafka cluster")
 
-	kubernetescli.Execute("delete", "kafka", name, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("delete", "kafka", name, "-n", namespace)
 	for _, topic := range topics {
-		kubernetescli.Execute("delete", "kafkatopic", topic, "-n", utils.OperatorNamespace)
+		kubernetescli.Execute("delete", "kafkatopic", topic, "-n", namespace)
 	}
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for kafka cluster to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": name})
-		l, err := clientset.CoreV1().Pods(utils.OperatorNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-		// _, err := clientset.AppsV1().StatefulSets(utils.OperatorNamespace).Get(name+"-kafka", metav1.GetOptions{})
-		// _, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get(registryKafkaClusterName+"-entity-operator", metav1.GetOptions{})
+		l, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		// _, err := clientset.AppsV1().StatefulSets(namespace).Get(name+"-kafka", metav1.GetOptions{})
+		// _, err := clientset.AppsV1().Deployments(namespace).Get(registryKafkaClusterName+"-entity-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -237,22 +248,22 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, name string, topics []s
 		}
 		return len(l.Items) == 0, nil
 	})
-	kubernetescli.GetDeployments(utils.OperatorNamespace)
-	kubernetescli.GetStatefulSets(utils.OperatorNamespace)
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetDeployments(namespace)
+	kubernetescli.GetStatefulSets(namespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
 }
 
 //RemoveStrimziOperator uninstalls strimzi operator
-func RemoveStrimziOperator(clientset *kubernetes.Clientset) {
+func RemoveStrimziOperator(clientset *kubernetes.Clientset, namespace string) {
 	log.Info("Removing strimzi operator")
-	kubernetescli.Execute("delete", "-f", bundlePath, "-n", utils.OperatorNamespace)
+	kubernetescli.Execute("delete", "-f", bundlePath, "-n", namespace)
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi cluster operator to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.AppsV1().Deployments(utils.OperatorNamespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+		_, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -261,7 +272,7 @@ func RemoveStrimziOperator(clientset *kubernetes.Clientset) {
 		}
 		return false, nil
 	})
-	kubernetescli.GetDeployments(utils.OperatorNamespace)
-	kubernetescli.GetPods(utils.OperatorNamespace)
+	kubernetescli.GetDeployments(namespace)
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 }

@@ -13,6 +13,7 @@ import (
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 
@@ -31,12 +32,17 @@ const operatorSubscriptionName string = "apicurio-registry-sub"
 const operatorGroupName string = "apicurio-registry-operator-group"
 const catalogSourceName string = "apicurio-registry-catalog"
 const catalogSourceNamespace string = utils.OperatorNamespace
+const operatorNamespace string = utils.OperatorNamespace
 
 var operatorCSV string
 
+func logPodsAll() {
+	kubernetescli.Execute("get", "pod", "-n", operatorNamespace, "-o", "yaml")
+}
+
 func installOperatorOLM() {
 
-	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
+	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
 	//catalog-source
 	_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Create(&operatorsv1alpha1.CatalogSource{
@@ -53,7 +59,7 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 120 * time.Second
+	timeout := 180 * time.Second
 	log.Info("Waiting for catalog source to be ready", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		catalogSource, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
@@ -67,19 +73,26 @@ func installOperatorOLM() {
 		}
 		return false, nil
 	})
+	kubernetescli.GetPods(catalogSourceNamespace)
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	//operator-group
 	log.Info("Creating operator group")
-	_, err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(utils.OperatorNamespace).Create(&operatorsv1.OperatorGroup{
+	_, err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Create(&operatorsv1.OperatorGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorGroupName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: operatorNamespace,
 		},
 		Spec: operatorsv1.OperatorGroupSpec{
-			TargetNamespaces: []string{utils.OperatorNamespace},
+			TargetNamespaces: []string{operatorNamespace},
 		},
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	//subscription
@@ -96,6 +109,9 @@ func installOperatorOLM() {
 		}
 		return false, nil
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
 	labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
@@ -115,10 +131,10 @@ func installOperatorOLM() {
 	operatorCSV = channelCSV
 
 	log.Info("Creating operator subscription", "package", packageName, "channel", channelName, "csv", channelCSV)
-	_, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(utils.OperatorNamespace).Create(&operatorsv1alpha1.Subscription{
+	_, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Create(&operatorsv1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorSubscriptionName,
-			Namespace: utils.OperatorNamespace,
+			Namespace: operatorNamespace,
 		},
 		Spec: &operatorsv1alpha1.SubscriptionSpec{
 			Package:                packageName,
@@ -129,31 +145,34 @@ func installOperatorOLM() {
 			InstallPlanApproval:    operatorsv1alpha1.ApprovalAutomatic,
 		},
 	})
+	if err != nil {
+		logPodsAll()
+	}
 	Expect(err).ToNot(HaveOccurred())
 
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)
 
 }
 
 func uninstallOperatorOLM() {
 
-	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID)
+	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID, operatorNamespace)
 
 	log.Info("Uninstalling operator")
 
-	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(utils.OperatorNamespace).Delete(operatorSubscriptionName, &metav1.DeleteOptions{})
+	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Delete(operatorSubscriptionName, &metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	if operatorCSV != "" {
-		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(utils.OperatorNamespace).Delete(operatorCSV, &metav1.DeleteOptions{})
+		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(operatorNamespace).Delete(operatorCSV, &metav1.DeleteOptions{})
 		Expect(err).ToNot(HaveOccurred())
 
-		kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset)
+		kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, operatorNamespace)
 	}
 
-	err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(utils.OperatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
+	err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -163,6 +182,6 @@ func uninstallOperatorOLM() {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, utils.OperatorNamespace)
+	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
 }

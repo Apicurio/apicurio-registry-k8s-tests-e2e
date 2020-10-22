@@ -10,12 +10,9 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
@@ -25,6 +22,8 @@ import (
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/selenium"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -36,55 +35,18 @@ import (
 
 var log = logf.Log.WithName("suite")
 
-//SuiteContext holds common info used in a testsuite
-type SuiteContext struct {
-	SuiteID       string
-	Cfg           *rest.Config
-	K8sClient     client.Client
-	k8sManager    ctrl.Manager
-	testEnv       *envtest.Environment
-	PackageClient pmversioned.Interface
-	OLMClient     olmapiversioned.Interface
-	Clientset     *kubernetes.Clientset
-	IsOpenshift   bool
-
-	OcpAppsClient  *ocp_apps_client.AppsV1Client
-	OcpRouteClient *ocp_route_client.RouteV1Client
-
-	CLIKubernetesClient *kubernetescli.KubernetesClient
-
-	OnlyTestOperator bool
-}
-
-type OcpImageReference struct {
-	ExternalImage string
-	InternalImage string
-}
-
-func (ctx *SuiteContext) OcpInternalImage(namespace string, imageName string, tag string) *OcpImageReference {
-	// oc get route -n openshift-image-registry
-	ocpImageRegistryRoute, err := ctx.OcpRouteClient.Routes("openshift-image-registry").Get("default-route", metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred())
-
-	ocpImageRegistryHost := ocpImageRegistryRoute.Status.Ingress[0].Host
-
-	return &OcpImageReference{
-		ExternalImage: ocpImageRegistryHost + "/" + namespace + "/" + imageName + ":" + tag,
-		InternalImage: "image-registry.openshift-image-registry.svc:5000" + "/" + namespace + "/" + imageName + ":" + tag,
-	}
-	// return ocpImageRegistryHost + "/" + namespace + "/" + imageName + ":" + tag
-}
-
 var onlyTestOperator bool
+var setupSelenium bool
 
 //SetFlags call this function on init function on test suite package
 func SetFlags() {
 	flag.BoolVar(&onlyTestOperator, "only-test-operator", false, "to only test operator installation and registry installation")
+	flag.BoolVar(&setupSelenium, "setup-selenium", false, "to deploy selenium, used for ui testing, if this flag is not passed testsuite will deploy selenium anyway if it detects it's required")
 }
 
 //NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
-func NewSuiteContext(suiteID string) *SuiteContext {
-	var suiteCtx SuiteContext = SuiteContext{}
+func NewSuiteContext(suiteID string) *types.SuiteContext {
+	var suiteCtx types.SuiteContext = types.SuiteContext{}
 	suiteCtx.SuiteID = suiteID
 
 	suiteCtx.OnlyTestOperator = onlyTestOperator
@@ -92,23 +54,25 @@ func NewSuiteContext(suiteID string) *SuiteContext {
 		log.Info("Only testing operator functionality")
 	}
 
+	suiteCtx.SetupSelenium = setupSelenium
+
 	return &suiteCtx
 }
 
 //InitSuite performs common logic for Ginkgo's BeforeSuite
-func InitSuite(suiteCtx *SuiteContext) {
+func InitSuite(suiteCtx *types.SuiteContext) {
 	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
 
 	By("bootstrapping test environment")
 
 	useCluster := true
-	suiteCtx.testEnv = &envtest.Environment{
+	suiteCtx.TestEnv = &envtest.Environment{
 		UseExistingCluster:       &useCluster,
 		AttachControlPlaneOutput: false,
 	}
 
 	var err error
-	suiteCtx.Cfg, err = suiteCtx.testEnv.Start()
+	suiteCtx.Cfg, err = suiteCtx.TestEnv.Start()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(suiteCtx.Cfg).ToNot(BeNil())
 
@@ -121,24 +85,17 @@ func InitSuite(suiteCtx *SuiteContext) {
 
 	suiteCtx.OLMClient = olmapiversioned.NewForConfigOrDie(suiteCtx.Cfg)
 
-	// suiteCtx.OnlyTestOperator = onlyTestOperator
-	// if suiteCtx.OnlyTestOperator {
-	// 	log.Info("Only testing operator functionality")
-	// }
-
-	//
-
-	suiteCtx.k8sManager, err = ctrl.NewManager(suiteCtx.Cfg, ctrl.Options{
+	suiteCtx.K8sManager, err = ctrl.NewManager(suiteCtx.Cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {
-		err = suiteCtx.k8sManager.Start(ctrl.SetupSignalHandler())
+		err = suiteCtx.K8sManager.Start(ctrl.SetupSignalHandler())
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
-	suiteCtx.K8sClient = suiteCtx.k8sManager.GetClient()
+	suiteCtx.K8sClient = suiteCtx.K8sManager.GetClient()
 	Expect(suiteCtx.K8sClient).ToNot(BeNil())
 
 	suiteCtx.Clientset = kubernetes.NewForConfigOrDie(suiteCtx.Cfg)
@@ -161,18 +118,22 @@ func InitSuite(suiteCtx *SuiteContext) {
 	suiteCtx.CLIKubernetesClient = kubernetescli.NewCLIKubernetesClient(cmd)
 	Expect(suiteCtx.CLIKubernetesClient).ToNot(BeNil())
 
+	selenium.DeploySeleniumIfNeeded(suiteCtx)
+
 }
 
 //TearDownSuite performs common logic for Ginkgo's AfterSuite
-func TearDownSuite(suiteCtx *SuiteContext) {
+func TearDownSuite(suiteCtx *types.SuiteContext) {
 	By("tearing down the test environment")
 
-	err := suiteCtx.testEnv.Stop()
+	selenium.RemoveSeleniumIfNeeded(suiteCtx)
+
+	err := suiteCtx.TestEnv.Stop()
 	Expect(err).ToNot(HaveOccurred())
 }
 
 //RunSuite starts the execution of a test suite
-func RunSuite(t *testing.T, suiteName string, suiteCtx *SuiteContext) {
+func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	if utils.SuiteProjectDir == "" {
 		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
@@ -184,7 +145,7 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *SuiteContext) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().String()))
+	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().Format("20060102150405")))
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
 		[]Reporter{printer.NewlineReporter{}, junitReporter},

@@ -1,6 +1,7 @@
 package functional
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"time"
@@ -18,7 +19,7 @@ import (
 var log = logf.Log.WithName("functional")
 
 //ExecuteRegistryFunctionalTests invokes via maven the integration tests in apicurio-registry repo
-func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
+func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	testProfile := "smoke"
 	if utils.ApicurioTestsProfile != "" {
 		testProfile = utils.ApicurioTestsProfile
@@ -29,6 +30,7 @@ func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
 	if utils.ApicurioProjectDir != "" {
 		apicurioProjectDir = utils.ApicurioProjectDir
 	}
+	log.Info("Apicurio Registry Tests", "directory", apicurioProjectDir)
 	os.Chdir(apicurioProjectDir)
 
 	var command = []string{"mvn", "verify", "-P" + testProfile, "-P" + ctx.Storage, "-pl", "tests", "-am", "-Dmaven.javadoc.skip=true", "-Dstyle.color=always", "--no-transfer-progress", "-DtrimStackTrace=false"}
@@ -41,11 +43,17 @@ func ExecuteRegistryFunctionalTests(ctx *types.TestContext) {
 		"TEST_REGISTRY_CLIENT=create",
 		"REGISTRY_HOST=" + ctx.RegistryHost,
 		"REGISTRY_PORT=" + ctx.RegistryPort,
+		"SELENIUM_HOST=" + suiteCtx.SeleniumHost,
+		"SELENIUM_PORT=" + suiteCtx.SeleniumPort,
+		"REGISTRY_SELENIUM_HOST=" + ctx.RegistryInternalHost,
+		"REGISTRY_SELENIUM_PORT=" + ctx.RegistryInternalPort,
 	}
 
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: command, Env: env})
 	os.Chdir(oldDir)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		Expect(errors.New("There are test failures")).NotTo(HaveOccurred())
+	}
 }
 
 //BasicRegistryAPITest simple test against apicurio registry api to just verify it's up and running

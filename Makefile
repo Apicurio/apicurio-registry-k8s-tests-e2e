@@ -16,7 +16,7 @@ export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 
 # apicurio-registry variables
 E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
-# export E2E_APICURIO_TESTS_PROFILE=cluster
+# export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install.yaml
@@ -32,9 +32,7 @@ STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/d
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
 # CI
-# run-operator-ci: kind-start kind-catalog-source-img run-operator-tests
-# FIXME ignoring olm for now
-run-operator-ci: kind-start pull-operator-repo setup-operator-deps run-operator-tests
+run-operator-ci: kind-start kind-setup-olm pull-operator-repo setup-operator-deps run-operator-tests
 
 run-apicurio-ci: kind-start pull-operator-repo setup-apicurio-deps run-apicurio-tests
 
@@ -42,7 +40,6 @@ run-apicurio-ci: kind-start pull-operator-repo setup-apicurio-deps run-apicurio-
 create-catalog-source-image:
 	docker build -t $(CATALOG_SOURCE_IMAGE) --build-arg MANIFESTS_IMAGE=$(OPERATOR_METADATA_IMAGE) ./olm-catalog-source
 
-# FIXME ignoring olm for now
 kind-catalog-source-img: create-catalog-source-image
 	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
 
@@ -53,7 +50,7 @@ kind-load-operator-images:
 	docker push localhost:5000/apicurio-registry-operator:latest-ci
 	sed -i "s#docker.io/apicurio/apicurio-registry-operator.*#localhost:5000/apicurio-registry-operator:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
 
-setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images)
+setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images) kind-catalog-source-img
 
 APICURIO_IMAGES_TAG?=latest-snapshot
 
@@ -106,16 +103,17 @@ else
 	# setup ingress
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
 	kubectl patch deployment ingress-nginx-controller -n ingress-nginx --type=json -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-ssl-passthrough"}]'
-	# FIXME ignoring olm for now
-	# ./scripts/setup-olm.sh ; if [ $$? -ne 0 ] ; then ./scripts/setup-olm.sh ; fi
 endif
 
+kind-setup-olm:
+	./scripts/setup-olm.sh ; if [ $$? -ne 0 ] ; then ./scripts/setup-olm.sh ; fi
+
+# we run olm tests only for operator testsuite
 run-operator-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle -- -only-test-operator
-	# FIXME ignoring olm for now
-	# ./testsuite/olm 
+		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator
 
+# for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle
@@ -131,6 +129,10 @@ run-backupandrestore-test:
 run-jpa-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="jpa" ./testsuite/bundle
+
+run-olm-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator
 
 example-run-jpa-and-streams-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
@@ -148,9 +150,12 @@ clean-tests-logs:
 	rm -rf tests-logs
 
 # repo dependencies utilities
+APICURIO_REGISTRY_REPO?=https://github.com/Apicurio/apicurio-registry.git
+APICURIO_REGISTRY_BRANCH?=master
+
 pull-apicurio-registry:
 ifeq (,$(wildcard ./apicurio-registry))
-	git clone https://github.com/Apicurio/apicurio-registry.git
+	git clone -b $(APICURIO_REGISTRY_BRANCH) $(APICURIO_REGISTRY_REPO)
 else
 	cd apicurio-registry; git pull
 endif
