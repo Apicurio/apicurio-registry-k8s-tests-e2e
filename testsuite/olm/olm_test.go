@@ -51,7 +51,10 @@ func installOperatorOLM() {
 		catalogSourceNamespace = utils.OperatorNamespace
 	} else {
 		catalogSourceNamespace = utils.OLMCatalogSourceNamespace
-		kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, catalogSourceNamespace)
+		err := kubernetesutils.CreateNamespace(suiteCtx.Clientset, catalogSourceNamespace)
+		if !kubeerrors.IsAlreadyExists(err) {
+			Expect(err).ToNot(HaveOccurred())
+		}
 	}
 	log.Info("Using catalog source namespace " + catalogSourceNamespace)
 

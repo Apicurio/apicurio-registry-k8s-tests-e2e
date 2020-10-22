@@ -36,6 +36,12 @@ func IsOCP(config *rest.Config) (bool, error) {
 	return true, nil
 }
 
+func CreateNamespace(clientset *kubernetes.Clientset, namespace string) error {
+	log.Info("Creating namespace", "name", namespace)
+	_, err := clientset.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	return err
+}
+
 //CreateTestNamespace creates one namespace with the given name
 func CreateTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	log.Info("Creating namespace", "name", namespace)
