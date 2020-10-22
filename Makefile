@@ -16,7 +16,7 @@ export E2E_SUITE_PROJECT_DIR=$(shell pwd)
 
 # apicurio-registry variables
 E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
-# export E2E_APICURIO_TESTS_PROFILE=cluster
+# export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install.yaml
@@ -150,13 +150,8 @@ clean-tests-logs:
 	rm -rf tests-logs
 
 # repo dependencies utilities
-# APICURIO_REGISTRY_REPO?=https://github.com/Apicurio/apicurio-registry.git
-
-# TODO remove this reference to famartirh repo
-APICURIO_REGISTRY_REPO?=https://github.com/famartinrh/apicurio-registry.git
-
-# APICURIO_REGISTRY_BRANCH?=master
-APICURIO_REGISTRY_BRANCH?=fix-tests-timeouts
+APICURIO_REGISTRY_REPO?=https://github.com/Apicurio/apicurio-registry.git
+APICURIO_REGISTRY_BRANCH?=master
 
 pull-apicurio-registry:
 ifeq (,$(wildcard ./apicurio-registry))
