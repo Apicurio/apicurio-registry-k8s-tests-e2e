@@ -139,10 +139,6 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
 	}
 
-	if utils.OLMCatalogSourceImage == "" {
-		panic("Env var " + utils.OLMCatalogSourceImageEnvVar + " is required")
-	}
-
 	RegisterFailHandler(Fail)
 
 	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().Format("20060102150405")))

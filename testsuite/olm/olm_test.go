@@ -1,6 +1,7 @@
 package olm
 
 import (
+	"errors"
 	"time"
 
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +42,10 @@ func logPodsAll() {
 }
 
 func installOperatorOLM() {
+
+	if utils.OLMCatalogSourceImage == "" {
+		Expect(errors.New("Env var " + utils.OLMCatalogSourceImageEnvVar + " is required")).ToNot(HaveOccurred())
+	}
 
 	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
