@@ -75,7 +75,7 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 300 * time.Second
+	timeout := 600 * time.Second
 	log.Info("Waiting for catalog source to be ready", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		catalogSource, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
