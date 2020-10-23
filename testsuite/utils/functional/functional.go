@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/gomega"
@@ -35,7 +36,9 @@ func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.Tes
 
 	var command = []string{"mvn", "verify", "-P" + testProfile, "-P" + ctx.Storage, "-pl", "tests", "-am", "-Dmaven.javadoc.skip=true", "-Dstyle.color=always", "--no-transfer-progress", "-DtrimStackTrace=false"}
 	if utils.ExtraMavenArgs != "" {
-		command = append(command, utils.ExtraMavenArgs)
+		for _, arg := range strings.Split(utils.ExtraMavenArgs, " ") {
+			command = append(command, arg)
+		}
 	}
 
 	var env = []string{
