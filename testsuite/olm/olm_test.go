@@ -75,23 +75,24 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 180 * time.Second
+	timeout := 300 * time.Second
 	log.Info("Waiting for catalog source to be ready", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		catalogSource, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
-		if err != nil && !kubeerrors.IsNotFound(err) {
+		if err != nil {
+			if kubeerrors.IsNotFound(err) {
+				return false, nil
+			}
 			return false, err
 		}
-		if catalogSource != nil {
-			if catalogSource.Status.GRPCConnectionState.LastObservedState == "READY" {
-				return true, nil
-			}
+		if catalogSource.Status.GRPCConnectionState.LastObservedState == "READY" {
+			return true, nil
 		}
 		return false, nil
 	})
 	kubernetescli.GetPods(catalogSourceNamespace)
 	if err != nil {
-		logPodsAll()
+		kubernetescli.Execute("get", "catalogsource", catalogSourceName, "-n", catalogSourceNamespace, "-o", "yaml")
 	}
 	Expect(err).ToNot(HaveOccurred())
 
