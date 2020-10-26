@@ -2,6 +2,7 @@ package olm
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -34,7 +35,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	close(done)
 
-}, 120+120+5)
+}, 15*float64(time.Minute))
 
 var _ = AfterSuite(func() {
 
