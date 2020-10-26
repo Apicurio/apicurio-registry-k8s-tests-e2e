@@ -34,7 +34,8 @@ func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.Tes
 	log.Info("Apicurio Registry Tests", "directory", apicurioProjectDir)
 	os.Chdir(apicurioProjectDir)
 
-	var command = []string{"mvn", "verify", "-P" + testProfile, "-P" + ctx.Storage, "-pl", "tests", "-am", "-Dmaven.javadoc.skip=true", "-Dstyle.color=always", "--no-transfer-progress", "-DtrimStackTrace=false"}
+	// "--no-transfer-progress"
+	var command = []string{"mvn", "verify", "-P" + testProfile, "-P" + ctx.Storage, "-pl", "tests", "-am", "-Dmaven.javadoc.skip=true", "-Dstyle.color=always", "-DtrimStackTrace=false"}
 	if utils.ExtraMavenArgs != "" {
 		for _, arg := range strings.Split(utils.ExtraMavenArgs, " ") {
 			command = append(command, arg)
