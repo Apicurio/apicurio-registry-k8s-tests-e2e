@@ -3,6 +3,7 @@ package streams
 import (
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -198,7 +199,15 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 		utils.DownloadFile(bundlePath, utils.StrimziOperatorBundlePath)
 		utils.ExecuteCmdOrDie(false, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", bundlePath)
 	} else {
-		utils.ExecuteCmdOrDie(true, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", utils.StrimziOperatorBundlePath+"/*RoleBinding*.yaml")
+		filepath.Walk(utils.StrimziOperatorBundlePath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				Expect(err).ToNot(HaveOccurred())
+			}
+			if strings.Contains(info.Name(), "RoleBinding") {
+				utils.ExecuteCmdOrDie(true, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", path)
+			}
+			return nil
+		})
 		bundlePath = utils.StrimziOperatorBundlePath
 	}
 
