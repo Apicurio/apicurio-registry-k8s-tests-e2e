@@ -198,7 +198,8 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 		utils.DownloadFile(bundlePath, utils.StrimziOperatorBundlePath)
 		utils.ExecuteCmdOrDie(false, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", bundlePath)
 	} else {
-		//TODO implement installing strimzi from local directory
+		utils.ExecuteCmdOrDie(true, "sed", "-i", "s/namespace: .*/namespace: "+namespace+"/", utils.StrimziOperatorBundlePath+"/*RoleBinding*.yaml")
+		bundlePath = utils.StrimziOperatorBundlePath
 	}
 
 	kubernetescli.Execute("apply", "-f", bundlePath, "-n", namespace)
