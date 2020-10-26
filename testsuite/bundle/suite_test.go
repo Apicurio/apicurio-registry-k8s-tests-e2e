@@ -2,7 +2,6 @@ package bundle
 
 import (
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,7 +34,7 @@ var _ = BeforeSuite(func(done Done) {
 
 	close(done)
 
-}, 5*float64(time.Minute))
+}, 5*60)
 
 var _ = AfterSuite(func() {
 
@@ -43,4 +42,4 @@ var _ = AfterSuite(func() {
 
 	suite.TearDownSuite(suiteCtx)
 
-})
+}, 5*60)
