@@ -113,7 +113,7 @@ func installOperatorOLM() {
 	Expect(err).ToNot(HaveOccurred())
 
 	//subscription
-	timeout = 30 * time.Second
+	timeout = 120 * time.Second
 	log.Info("Waiting for package manifest to be available", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
