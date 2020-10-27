@@ -37,6 +37,17 @@ func CommonTestCases(suiteCtx *types.SuiteContext) {
 
 //BundleOnlyTestCases contains test cases that will be only executed for operator bundle installation
 func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
+
+	var _ = DescribeTable("clustered registry",
+		func(testContext *types.TestContext) {
+			executeTestCase(suiteCtx, testContext)
+		},
+
+		Entry("jpa", &types.TestContext{Storage: utils.StorageJpa, Replicas: 3}),
+		Entry("streams", &types.TestContext{Storage: utils.StorageStreams, Replicas: 3}),
+		Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, Replicas: 3}),
+	)
+
 	if !suiteCtx.OnlyTestOperator {
 		var _ = DescribeTable("kafka connect converters",
 			func(testContext *types.TestContext) {

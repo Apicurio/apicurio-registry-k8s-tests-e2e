@@ -44,7 +44,12 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 	err := suiteCtx.K8sClient.Create(context.TODO(), registry)
 	Expect(err).ToNot(HaveOccurred())
 
-	waitForRegistryReady(suiteCtx, registry.Namespace, registry.Name)
+	var registryReplicas int32 = 1
+	if registry.Spec.Deployment.Replicas > 0 {
+		registryReplicas = int32(registry.Spec.Deployment.Replicas)
+	}
+
+	waitForRegistryReady(suiteCtx, registry.Namespace, registry.Name, registryReplicas)
 
 	labelsSet := labels.Set(map[string]string{"app": registry.Name})
 
@@ -88,7 +93,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 
 }
 
-func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, registryName string) {
+func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, registryName string, registryReplicas int32) {
 
 	// var registryDeploymentName string = registryName
 
@@ -117,12 +122,10 @@ func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, regist
 	kubernetescli.Execute("get", "apicurioregistry", "-n", namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	var registryReplicas int32 = 1
-	if apicurioRegistry.Status.ReplicaCount != 0 {
-		registryReplicas = apicurioRegistry.Status.ReplicaCount
-	}
-
 	timeout = 180 * time.Second
+	if registryReplicas > 1 {
+		timeout = 300 * time.Second
+	}
 	log.Info("Waiting for registry deployment to be ready", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"app": registryName})

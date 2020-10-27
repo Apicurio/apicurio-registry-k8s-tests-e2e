@@ -18,8 +18,9 @@ import (
 
 //TestContext holds the common information of for a functional test
 type TestContext struct {
-	ID      string
-	Storage string
+	ID       string
+	Storage  string
+	Replicas int
 
 	RegistryNamespace string
 

@@ -42,6 +42,11 @@ func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	log.Info("Deploying apicurio registry")
 
+	replicas := 1
+	if ctx.Replicas > 0 {
+		replicas = ctx.Replicas
+	}
+
 	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
@@ -56,6 +61,9 @@ func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 					UserName: user,
 					Password: password,
 				},
+			},
+			Deployment: apicurio.ApicurioRegistrySpecDeployment{
+				Replicas: int32(replicas),
 			},
 		},
 	}

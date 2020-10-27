@@ -20,6 +20,11 @@ func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestConte
 
 	log.Info("Deploying apicurio registry")
 
+	replicas := 1
+	if ctx.Replicas > 0 {
+		replicas = ctx.Replicas
+	}
+
 	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
@@ -32,6 +37,9 @@ func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestConte
 				Infinispan: apicurio.ApicurioRegistrySpecConfigurationInfinispan{
 					ClusterName: "registry-application",
 				},
+			},
+			Deployment: apicurio.ApicurioRegistrySpecDeployment{
+				Replicas: int32(replicas),
 			},
 		},
 	}
