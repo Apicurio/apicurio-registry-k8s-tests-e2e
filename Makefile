@@ -111,12 +111,16 @@ kind-setup-olm:
 # we run olm tests only for operator testsuite
 run-operator-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator
+		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator -disable-clustered-tests
 
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle
+		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
+
+run-clustered-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v --focus="clustered" ./testsuite/bundle -- -only-test-operator
 
 run-converters-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \

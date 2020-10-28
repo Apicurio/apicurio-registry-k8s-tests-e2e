@@ -37,11 +37,13 @@ var log = logf.Log.WithName("suite")
 
 var onlyTestOperator bool
 var setupSelenium bool
+var disableClusteredTests bool
 
 //SetFlags call this function on init function on test suite package
 func SetFlags() {
 	flag.BoolVar(&onlyTestOperator, "only-test-operator", false, "to only test operator installation and registry installation")
 	flag.BoolVar(&setupSelenium, "setup-selenium", false, "to deploy selenium, used for ui testing, if this flag is not passed testsuite will deploy selenium anyway if it detects it's required")
+	flag.BoolVar(&disableClusteredTests, "disable-clustered-tests", false, "to disable tests for clustered registry deployments")
 }
 
 //NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
@@ -52,6 +54,11 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 	suiteCtx.OnlyTestOperator = onlyTestOperator
 	if suiteCtx.OnlyTestOperator {
 		log.Info("Only testing operator functionality")
+	}
+
+	suiteCtx.DisableClusteredTests = disableClusteredTests
+	if suiteCtx.DisableClusteredTests {
+		log.Info("Clustered registry tests disabled")
 	}
 
 	suiteCtx.SetupSelenium = setupSelenium
