@@ -75,24 +75,42 @@ func installOperatorOLM() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 600 * time.Second
-	log.Info("Waiting for catalog source to be ready", "timeout", timeout)
+	timeout := 300 * time.Second
+	log.Info("Waiting for catalog source", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		catalogSource, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
+		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
 		if err != nil {
 			if kubeerrors.IsNotFound(err) {
 				return false, nil
 			}
 			return false, err
 		}
-		if catalogSource.Status.GRPCConnectionState.LastObservedState == "READY" {
-			return true, nil
-		}
-		return false, nil
+		return true, nil
 	})
 	kubernetescli.GetPods(catalogSourceNamespace)
 	if err != nil {
 		kubernetescli.Execute("get", "catalogsource", catalogSourceName, "-n", catalogSourceNamespace, "-o", "yaml")
+	}
+	Expect(err).ToNot(HaveOccurred())
+
+	//TODO make this timeout configurable
+	timeout = 540 * time.Second
+	log.Info("Waiting for package manifest to be available", "timeout", timeout)
+	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
+		pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		if err != nil && !kubeerrors.IsNotFound(err) {
+			return false, err
+		}
+		pkg := findApicurioPackageManifest(pkgsList)
+		if pkg != nil {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		logPodsAll()
+		kubernetescli.Execute("get", "packagemanifest")
 	}
 	Expect(err).ToNot(HaveOccurred())
 
@@ -113,30 +131,12 @@ func installOperatorOLM() {
 	Expect(err).ToNot(HaveOccurred())
 
 	//subscription
-	//TODO make this timeout configurable
-	timeout = 240 * time.Second
-	log.Info("Waiting for package manifest to be available", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
-		pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-		if err != nil && !kubeerrors.IsNotFound(err) {
-			return false, err
-		}
-		if len(pkgsList.Items) == 1 {
-			return true, nil
-		}
-		return false, nil
-	})
-	if err != nil {
-		logPodsAll()
-	}
-	Expect(err).ToNot(HaveOccurred())
 
 	labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
 	pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
-	Expect(len(pkgsList.Items)).To(BeIdenticalTo(1))
-	var packageManifest packagev1.PackageManifest = pkgsList.Items[0]
+	var packageManifest *packagev1.PackageManifest = findApicurioPackageManifest(pkgsList)
+	Expect(packageManifest).ToNot(BeNil())
 	var packageName string = packageManifest.Name
 	var channelName string = packageManifest.Status.DefaultChannel
 	var channelCSV string
@@ -202,4 +202,13 @@ func uninstallOperatorOLM() {
 
 	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
+}
+
+func findApicurioPackageManifest(pkgsList *packagev1.PackageManifestList) *packagev1.PackageManifest {
+	for _, pkg := range pkgsList.Items {
+		if pkg.Name == "apicurio-registry" || pkg.Name == "service-registry-operator" {
+			return &pkg
+		}
+	}
+	return nil
 }
