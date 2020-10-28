@@ -56,7 +56,8 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 	if suiteCtx.IsOpenshift {
 		kubernetescli.Execute("get", "route", "-n", ctx.RegistryNamespace)
 
-		timeout := 60 * time.Second
+		//TODO make this timeout configurable
+		timeout := 90 * time.Second
 		log.Info("Waiting for registry route to be ready", "timeout", timeout)
 		err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 			routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
