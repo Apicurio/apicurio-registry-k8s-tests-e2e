@@ -154,7 +154,7 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 
 	//wait for kafka cluster
 	//TODO make this timeout configurable
-	timeout := 8 * time.Minute
+	timeout := 10 * time.Minute
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(name+"-entity-operator", metav1.GetOptions{})
