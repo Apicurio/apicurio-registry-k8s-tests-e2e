@@ -96,15 +96,19 @@ func installOperatorOLM() {
 	//TODO make this timeout configurable
 	timeout = 540 * time.Second
 	log.Info("Waiting for package manifest to be available", "timeout", timeout)
+	var packageManifest *packagev1.PackageManifest = nil
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
 		pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		if err != nil && !kubeerrors.IsNotFound(err) {
 			return false, err
 		}
-		pkg := findApicurioPackageManifest(pkgsList)
-		if pkg != nil {
-			return true, nil
+		if pkgsList != nil {
+			pkg := findApicurioPackageManifest(pkgsList)
+			if pkg != nil {
+				packageManifest = pkg
+				return true, nil
+			}
 		}
 		return false, nil
 	})
@@ -132,10 +136,10 @@ func installOperatorOLM() {
 
 	//subscription
 
-	labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
-	pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-	Expect(err).ToNot(HaveOccurred())
-	var packageManifest *packagev1.PackageManifest = findApicurioPackageManifest(pkgsList)
+	// labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
+	// pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	// Expect(err).ToNot(HaveOccurred())
+	// var packageManifest *packagev1.PackageManifest = findApicurioPackageManifest(pkgsList)
 	Expect(packageManifest).ToNot(BeNil())
 	var packageName string = packageManifest.Name
 	var channelName string = packageManifest.Status.DefaultChannel
