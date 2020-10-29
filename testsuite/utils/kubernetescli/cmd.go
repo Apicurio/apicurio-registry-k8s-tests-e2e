@@ -17,7 +17,7 @@ var (
 )
 
 type KubernetesClient struct {
-	cmd CLIKubernetesClient
+	Cmd CLIKubernetesClient
 }
 
 var lock = &sync.Mutex{}
@@ -31,7 +31,7 @@ func NewCLIKubernetesClient(cmd CLIKubernetesClient) *KubernetesClient {
 
 	if instance == nil {
 		instance = &KubernetesClient{
-			cmd: cmd,
+			Cmd: cmd,
 		}
 	}
 
@@ -61,10 +61,10 @@ func GetVolumes(namespace string) {
 }
 
 func Execute(args ...string) {
-	utils.ExecuteCmdOrDie(true, string(GetCLIKubernetesClient().cmd), args...)
+	utils.ExecuteCmdOrDie(true, string(GetCLIKubernetesClient().Cmd), args...)
 }
 
 func RedirectOutput(stdOutFile *os.File, stdErrFile *os.File, args ...string) {
-	err := utils.Execute(&utils.Command{Cmd: append([]string{string(GetCLIKubernetesClient().cmd)}, args...)}, stdOutFile, stdErrFile)
+	err := utils.Execute(&utils.Command{Cmd: append([]string{string(GetCLIKubernetesClient().Cmd)}, args...)}, stdOutFile, stdErrFile)
 	Expect(err).ToNot(HaveOccurred())
 }

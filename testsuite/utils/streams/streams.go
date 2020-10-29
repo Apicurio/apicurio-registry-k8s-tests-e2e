@@ -88,6 +88,7 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 				"KEYSTORE_SECRET=" + keystoreSecret,
 				"HOSTNAME=" + kafkaRequest.Name + "-kafka-bootstrap",
 				"NAMESPACE=" + ctx.RegistryNamespace,
+				"K8S_CMD=" + string(kubernetescli.GetCLIKubernetesClient().Cmd),
 			},
 			Cmd: []string{scriptFile},
 		})
@@ -106,6 +107,7 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 				"CLUSTER_CA_CERT_SECRET=" + kafkaRequest.Name + "-cluster-ca-cert",
 				"TRUSTSTORE_SECRET=" + truststoreSecret,
 				"NAMESPACE=" + ctx.RegistryNamespace,
+				"K8S_CMD=" + string(kubernetescli.GetCLIKubernetesClient().Cmd),
 			},
 			Cmd: []string{scriptFile},
 		})
