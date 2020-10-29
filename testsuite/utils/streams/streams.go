@@ -278,7 +278,26 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	})
 	kubernetescli.GetDeployments(req.Namespace)
 	kubernetescli.GetPods(req.Namespace)
+	kubernetescli.GetVolumes(req.Namespace)
 	Expect(err).ToNot(HaveOccurred())
+
+	if req.Security == "tls" || req.Security == "scram" {
+		//wait for required cluster ca secret
+		timeout := 1 * time.Minute
+		log.Info("Waiting for kafka cluster CA secret to be created ", "timeout", timeout)
+		err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+			_, err := suiteCtx.Clientset.CoreV1().Secrets(req.Namespace).Get(req.Name+"-cluster-ca-cert", metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			return true, nil
+		})
+		kubernetescli.Execute("get", "secret", "-n", req.Namespace)
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	if req.ExposeExternal {
 		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
@@ -382,6 +401,7 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, kafka
 	kubernetescli.GetDeployments(namespace)
 	kubernetescli.GetStatefulSets(namespace)
 	kubernetescli.GetPods(namespace)
+	kubernetescli.GetVolumes(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
 }

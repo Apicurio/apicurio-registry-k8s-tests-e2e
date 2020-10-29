@@ -55,6 +55,11 @@ func GetPods(namespace string) {
 	Execute("get", "pod", "-n", namespace)
 }
 
+func GetVolumes(namespace string) {
+	Execute("get", "pvc", "-n", namespace)
+	Execute("get", "pv")
+}
+
 func Execute(args ...string) {
 	utils.ExecuteCmdOrDie(true, string(GetCLIKubernetesClient().cmd), args...)
 }
