@@ -1,0 +1,10 @@
+apiVersion: kafka.strimzi.io/v1beta1
+kind: KafkaUser
+metadata:
+  name: {USER_NAME}
+  namespace: {NAMESPACE}
+  labels:
+    strimzi.io/cluster: {CLUSTER_NAME}
+spec:
+  authentication:
+    type: {AUTH_TYPE}

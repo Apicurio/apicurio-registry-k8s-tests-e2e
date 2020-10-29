@@ -118,6 +118,10 @@ run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
 
+run-security-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v --focus="security" ./testsuite/bundle -- -only-test-operator
+
 run-clustered-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="clustered" ./testsuite/bundle -- -only-test-operator

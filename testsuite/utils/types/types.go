@@ -21,6 +21,7 @@ type TestContext struct {
 	ID       string
 	Storage  string
 	Replicas int
+	Security string
 
 	RegistryNamespace string
 
@@ -29,6 +30,8 @@ type TestContext struct {
 	RegistryPort         string
 	RegistryInternalHost string
 	RegistryInternalPort string
+
+	KafkaClusterInfo *KafkaClusterInfo
 
 	cleanupFunctions []func()
 }
@@ -71,4 +74,15 @@ type SuiteContext struct {
 type OcpImageReference struct {
 	ExternalImage string
 	InternalImage string
+}
+
+//KafkaClusterInfo holds useful info to use a kafka cluster
+type KafkaClusterInfo struct {
+	Name                     string
+	Topics                   []string
+	StrimziDeployed          bool
+	BootstrapServers         string
+	ExternalBootstrapServers string
+	AuthType                 string
+	Username                 string
 }

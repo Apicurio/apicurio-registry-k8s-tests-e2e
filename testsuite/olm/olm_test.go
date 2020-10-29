@@ -210,6 +210,7 @@ func uninstallOperatorOLM() {
 
 func findApicurioPackageManifest(pkgsList *packagev1.PackageManifestList) *packagev1.PackageManifest {
 	for _, pkg := range pkgsList.Items {
+		//TODO extract this to env var
 		if pkg.Name == "apicurio-registry" || pkg.Name == "service-registry-operator" {
 			return &pkg
 		}

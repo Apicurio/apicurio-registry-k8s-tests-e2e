@@ -58,10 +58,10 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo *streams.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
+	var kafkaClusterInfo *types.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
-			streams.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterName, []string{})
+			streams.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
 			streams.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
 		}
 		testContext.RegisterCleanup(kafkaCleanup)

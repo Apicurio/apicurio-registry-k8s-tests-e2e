@@ -27,15 +27,24 @@ import (
 var log = logf.Log.WithName("streams")
 
 var bundlePath string = utils.StrimziOperatorBundlePath
-var registryKafkaClusterName string = "registry-kafka"
-var registryKafkaTopics []string = []string{"storage-topic", "global-id-topic"}
 
 var registryName string
 
 //DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
 func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, ctx.RegistryNamespace, 3, registryKafkaClusterName, registryKafkaTopics)
+	kafkaRequest := &CreateKafkaClusterRequest{
+		Name:           "registry-kafka",
+		Namespace:      ctx.RegistryNamespace,
+		ExposeExternal: false,
+		Replicas:       3,
+		Topics:         []string{"storage-topic", "global-id-topic"},
+		Security:       ctx.Security,
+	}
+
+	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, kafkaRequest)
+
+	ctx.KafkaClusterInfo = kafkaClusterInfo
 
 	bootstrapServers := kafkaClusterInfo.BootstrapServers
 
@@ -66,6 +75,47 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 		},
 	}
 
+	if ctx.Security == "tls" {
+		truststoreSecret := kafkaRequest.Name + "-cluster-ca-truststore"
+		keystoreSecret := kafkaClusterInfo.Username + "-keystore"
+
+		scriptFile := utils.SuiteProjectDir + "/scripts/kafka/create_cert_stores.sh"
+		err := utils.ExecuteCmd(true, &utils.Command{
+			Env: []string{
+				"CLUSTER_CA_CERT_SECRET=" + kafkaRequest.Name + "-cluster-ca-cert",
+				"CLIENT_CERT_SECRET=" + kafkaClusterInfo.Username,
+				"TRUSTSTORE_SECRET=" + truststoreSecret,
+				"KEYSTORE_SECRET=" + keystoreSecret,
+				"HOSTNAME=" + kafkaRequest.Name + "-kafka-bootstrap",
+			},
+			Cmd: []string{scriptFile},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		registry.Spec.Configuration.Streams.Security.Tls.KeystoreSecretName = keystoreSecret
+		registry.Spec.Configuration.Streams.Security.Tls.TruststoreSecretName = truststoreSecret
+
+		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
+
+	} else if ctx.Security == "scram" {
+		truststoreSecret := kafkaRequest.Name + "-cluster-ca-truststore"
+
+		scriptFile := utils.SuiteProjectDir + "/scripts/kafka/create_cert_stores.sh"
+		err := utils.ExecuteCmd(true, &utils.Command{
+			Env: []string{
+				"CLUSTER_CA_CERT_SECRET=" + kafkaRequest.Name + "-cluster-ca-cert",
+				"TRUSTSTORE_SECRET=" + truststoreSecret,
+			},
+			Cmd: []string{scriptFile},
+		})
+		Expect(err).ToNot(HaveOccurred())
+		registry.Spec.Configuration.Streams.Security.Scram.TruststoreSecretName = truststoreSecret
+		registry.Spec.Configuration.Streams.Security.Scram.PasswordSecretName = kafkaClusterInfo.Username
+		registry.Spec.Configuration.Streams.Security.Scram.User = kafkaClusterInfo.Username
+
+		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
+
+	}
+
 	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
 
 }
@@ -77,38 +127,64 @@ func RemoveStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 
 	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
 
-	RemoveKafkaCluster(suiteCtx.Clientset, ctx.RegistryNamespace, registryKafkaClusterName, registryKafkaTopics)
+	if ctx.Security == "tls" {
+		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Name+"-cluster-ca-truststore", "-n", ctx.RegistryNamespace)
+		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Username+"-keystore", "-n", ctx.RegistryNamespace)
+	} else if ctx.Security == "scram" {
+		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Name+"-cluster-ca-truststore", "-n", ctx.RegistryNamespace)
+	}
+
+	RemoveKafkaCluster(suiteCtx.Clientset, ctx.RegistryNamespace, ctx.KafkaClusterInfo)
 
 	RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
 
 }
 
-//KafkaClusterInfo holds useful info to use a kafka cluster
-type KafkaClusterInfo struct {
-	StrimziDeployed          bool
-	BootstrapServers         string
-	ExternalBootstrapServers string
-}
-
-func DeployKafkaCluster(suiteCtx *types.SuiteContext, namespace string, replicas int, name string, topics []string) *KafkaClusterInfo {
-	return DeployKafkaClusterV2(suiteCtx, namespace, replicas, false, name, topics)
+type CreateKafkaClusterRequest struct {
+	Namespace      string
+	Replicas       int
+	ExposeExternal bool
+	Name           string
+	Topics         []string
+	Security       string
 }
 
 //DeployKafkaCluster deploys a kafka cluster and some topics, returns a flag to indicate if strimzi operator has been deployed(useful to know if it was already installed)
-func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replicas int, exposeExternal bool, name string, topics []string) *KafkaClusterInfo {
+func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replicas int, exposeExternal bool, name string, topics []string) *types.KafkaClusterInfo {
+	return DeployKafkaCluster(suiteCtx,
+		&CreateKafkaClusterRequest{
+			Name:           name,
+			ExposeExternal: exposeExternal,
+			Namespace:      namespace,
+			Replicas:       replicas,
+			Topics:         topics,
+		})
+}
 
-	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset, namespace)
+func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterRequest) *types.KafkaClusterInfo {
 
-	clusterInfo := &KafkaClusterInfo{StrimziDeployed: strimziDeployed}
+	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset, req.Namespace)
 
-	var replicasStr string = strconv.Itoa(replicas)
+	clusterInfo := &types.KafkaClusterInfo{StrimziDeployed: strimziDeployed}
+
+	clusterInfo.Name = req.Name
+	clusterInfo.Topics = req.Topics
+
+	if req.Security == "tls" || req.Security == "scram" {
+		authType := "tls"
+		if req.Security == "scram" {
+			authType = "scram-sha-512"
+		}
+		clusterInfo.AuthType = authType
+	}
+	var replicasStr string = strconv.Itoa(req.Replicas)
 	minisr := "1"
-	if replicas > 1 {
+	if req.Replicas > 1 {
 		minisr = "2"
 	}
 	var kafkaClusterManifest string = ""
 	kindBoostrapHost := "bootstrap.127.0.0.1.nip.io"
-	if exposeExternal {
+	if req.ExposeExternal {
 		brokerHost := "broker-0.127.0.0.1.nip.io"
 		template := "kafka-cluster-external-template.yaml"
 		if suiteCtx.IsOpenshift {
@@ -117,39 +193,69 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 
 		kafkaClusterManifestFile := utils.Template("kafka-cluster",
 			utils.SuiteProjectDir+"/kubefiles/"+template,
-			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
-			utils.Replacement{Old: "{NAME}", New: name},
+			utils.Replacement{Old: "{NAMESPACE}", New: req.Namespace},
+			utils.Replacement{Old: "{NAME}", New: req.Name},
 			utils.Replacement{Old: "{BOOTSTRAP_HOST}", New: kindBoostrapHost},
 			utils.Replacement{Old: "{BROKER_HOST}", New: brokerHost},
 		)
 		kafkaClusterManifest = kafkaClusterManifestFile.Name()
 	} else {
-		kafkaClusterManifestFile := utils.Template("kafka-cluster",
-			utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
-			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
-			utils.Replacement{Old: "{NAME}", New: name},
-			utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
-			utils.Replacement{Old: "{MIN_ISR}", New: minisr},
-		)
-		kafkaClusterManifest = kafkaClusterManifestFile.Name()
+
+		if req.Security == "" {
+			kafkaClusterManifestFile := utils.Template("kafka-cluster",
+				utils.SuiteProjectDir+"/kubefiles/kafka-cluster-template.yaml",
+				utils.Replacement{Old: "{NAMESPACE}", New: req.Namespace},
+				utils.Replacement{Old: "{NAME}", New: req.Name},
+				utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
+				utils.Replacement{Old: "{MIN_ISR}", New: minisr},
+			)
+			kafkaClusterManifest = kafkaClusterManifestFile.Name()
+		} else if req.Security == "tls" || req.Security == "scram" {
+			kafkaClusterManifestFile := utils.Template("kafka-cluster",
+				utils.SuiteProjectDir+"/kubefiles/kafka-cluster-secured-template.yaml",
+				utils.Replacement{Old: "{NAMESPACE}", New: req.Namespace},
+				utils.Replacement{Old: "{NAME}", New: req.Name},
+				utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
+				utils.Replacement{Old: "{MIN_ISR}", New: minisr},
+				utils.Replacement{Old: "{AUTH_TYPE}", New: clusterInfo.AuthType},
+			)
+			kafkaClusterManifest = kafkaClusterManifestFile.Name()
+		} else {
+			Expect(errors.NewBadRequest("uknown security method")).NotTo(HaveOccurred())
+		}
+
 	}
 
-	log.Info("Deploying kafka cluster " + name)
-	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", namespace)
+	log.Info("Deploying kafka cluster " + req.Name)
+	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", req.Namespace)
 
-	for _, topic := range topics {
+	for _, topic := range req.Topics {
 		kafkaTopicManifestFile := utils.Template("kafka-topic-"+topic,
 			utils.SuiteProjectDir+"/kubefiles/kafka-topic-template.yaml",
-			utils.Replacement{Old: "{NAMESPACE}", New: namespace},
+			utils.Replacement{Old: "{NAMESPACE}", New: req.Namespace},
 			utils.Replacement{Old: "{TOPIC_NAME}", New: topic},
-			utils.Replacement{Old: "{CLUSTER_NAME}", New: name},
+			utils.Replacement{Old: "{CLUSTER_NAME}", New: req.Name},
 			utils.Replacement{Old: "{REPLICAS}", New: replicasStr},
 			utils.Replacement{Old: "{PARTITIONS}", New: replicasStr},
 		)
 		kafkaTopicManifest := kafkaTopicManifestFile.Name()
 
 		log.Info("Deploying kafka topic " + topic)
-		kubernetescli.Execute("apply", "-f", kafkaTopicManifest, "-n", namespace)
+		kubernetescli.Execute("apply", "-f", kafkaTopicManifest, "-n", req.Namespace)
+	}
+
+	if req.Security == "tls" || req.Security == "scram" {
+		log.Info("Creating secured kafka user")
+		kafkaUserName := "registry-user-secured"
+		clusterInfo.Username = kafkaUserName
+		kafkaUserFile := utils.Template("kafka-user",
+			utils.SuiteProjectDir+"/kubefiles/kafka-user-secured-template.yaml",
+			utils.Replacement{Old: "{USER_NAME}", New: kafkaUserName},
+			utils.Replacement{Old: "{NAMESPACE}", New: req.Namespace},
+			utils.Replacement{Old: "{CLUSTER_NAME}", New: req.Name},
+			utils.Replacement{Old: "{AUTH_TYPE}", New: clusterInfo.AuthType},
+		)
+		kubernetescli.Execute("apply", "-f", kafkaUserFile.Name(), "-n", req.Namespace)
 	}
 
 	//wait for kafka cluster
@@ -157,7 +263,7 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 	timeout := 10 * time.Minute
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(name+"-entity-operator", metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(req.Namespace).Get(req.Name+"-entity-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -168,14 +274,14 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 		}
 		return false, nil
 	})
-	kubernetescli.GetDeployments(namespace)
-	kubernetescli.GetPods(namespace)
+	kubernetescli.GetDeployments(req.Namespace)
+	kubernetescli.GetPods(req.Namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	if exposeExternal {
+	if req.ExposeExternal {
 		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
 		if suiteCtx.IsOpenshift {
-			route, err := suiteCtx.OcpRouteClient.Routes(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
+			route, err := suiteCtx.OcpRouteClient.Routes(req.Namespace).Get(req.Name+"-kafka-bootstrap", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
 			host := route.Status.Ingress[0].Host
@@ -183,9 +289,12 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 		}
 	}
 
-	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name+"-kafka-bootstrap", metav1.GetOptions{})
-	Expect(err).ToNot(HaveOccurred())
-	bootstrapServers := svc.Spec.ClusterIP + ":9092"
+	// svc, err := suiteCtx.Clientset.CoreV1().Services(req.Namespace).Get(req.Name+"-kafka-bootstrap", metav1.GetOptions{})
+	// Expect(err).ToNot(HaveOccurred())
+	bootstrapServers := req.Name + "-kafka-bootstrap." + req.Namespace + ":9092"
+	if req.Security != "" {
+		bootstrapServers = req.Name + "-kafka-bootstrap." + req.Namespace + ":9093"
+	}
 	clusterInfo.BootstrapServers = bootstrapServers
 	return clusterInfo
 }
@@ -242,22 +351,24 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 }
 
 //RemoveKafkaCluster removes a kafka cluster
-func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, name string, topics []string) {
+func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, kafkaClusterInfo *types.KafkaClusterInfo) {
 
 	log.Info("Removing kafka cluster")
 
-	kubernetescli.Execute("delete", "kafka", name, "-n", namespace)
-	for _, topic := range topics {
+	kubernetescli.Execute("delete", "kafka", kafkaClusterInfo.Name, "-n", namespace)
+	for _, topic := range kafkaClusterInfo.Topics {
 		kubernetescli.Execute("delete", "kafkatopic", topic, "-n", namespace)
+	}
+
+	if kafkaClusterInfo.Username != "" {
+		kubernetescli.Execute("delete", "kafkauser", kafkaClusterInfo.Username, "-n", namespace)
 	}
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for kafka cluster to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": name})
+		labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": kafkaClusterInfo.Name})
 		l, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-		// _, err := clientset.AppsV1().StatefulSets(namespace).Get(name+"-kafka", metav1.GetOptions{})
-		// _, err := clientset.AppsV1().Deployments(namespace).Get(registryKafkaClusterName+"-entity-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil

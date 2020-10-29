@@ -70,6 +70,16 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	})
+
+	var _ = DescribeTable("streams security",
+		func(testContext *types.TestContext) {
+			executeTestCase(suiteCtx, testContext)
+		},
+
+		Entry("scram", &types.TestContext{Storage: utils.StorageStreams, Security: "scram"}),
+		Entry("tls", &types.TestContext{Storage: utils.StorageStreams, Security: "tls"}),
+	)
+
 }
 
 //ExecuteTestCase common logic to test operator deploying an instance of ApicurioRegistry with one of it's storage variants

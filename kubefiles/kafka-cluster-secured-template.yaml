@@ -1,0 +1,32 @@
+apiVersion: kafka.strimzi.io/v1beta1
+kind: Kafka
+metadata:
+  name: {NAME}
+  namespace: {NAMESPACE}
+spec:
+  kafka:
+    version: 2.4.0
+    replicas: {REPLICAS}
+    listeners:
+      plain: {}
+      tls: 
+        authentication:
+          type: {AUTH_TYPE}
+    config:
+      offsets.topic.replication.factor: {REPLICAS}
+      transaction.state.log.replication.factor: {REPLICAS}
+      transaction.state.log.min.isr: {MIN_ISR}
+      log.message.format.version: "2.4"
+    storage:
+      type: persistent-claim
+      size: 100Gi
+      deleteClaim: true
+  zookeeper:
+    replicas: 1
+    storage:
+      type: persistent-claim
+      size: 100Gi
+      deleteClaim: true
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
