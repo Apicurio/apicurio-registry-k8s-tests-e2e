@@ -19,6 +19,8 @@ echo $KEYSTORE_SECRET
 
 echo $HOSTNAME
 
+echo $NAMESPACE
+
 # Parameters:
 # $1: Path to the new truststore
 # $2: Truststore password
@@ -38,7 +40,7 @@ function create_keystore {
    RANDFILE=/tmp/.rnd openssl pkcs12 -export -in $3 -inkey $4 -name $HOSTNAME -password pass:$2 -out $1
 }
 
-CLUSTER_CA_CRT=$(oc get secret $CLUSTER_CA_CERT_SECRET -o 'go-template={{index .data "ca.crt"}}' | base64 -d -)
+CLUSTER_CA_CRT=$(kubectl get secret $CLUSTER_CA_CERT_SECRET -n $NAMESPACE -o 'go-template={{index .data "ca.crt"}}' | base64 -d -)
 
 echo "Preparing truststore"
 export TRUSTSTORE_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
@@ -46,14 +48,14 @@ echo "$CLUSTER_CA_CRT" > /tmp/ca.crt
 create_truststore /tmp/truststore.p12 $TRUSTSTORE_PASSWORD /tmp/ca.crt ca
 
 # ca.p12 ca.password
-oc create secret generic $TRUSTSTORE_SECRET --from-file=ca.p12=/tmp/truststore.p12 --from-literal=ca.password=$TRUSTSTORE_PASSWORD
+kubectl create secret generic $TRUSTSTORE_SECRET --from-file=ca.p12=/tmp/truststore.p12 --from-literal=ca.password=$TRUSTSTORE_PASSWORD -n $NAMESPACE
 
 ###
 
 if [[ "$CLIENT_CERT_SECRET" ]];
 then
-    CLIENT_CRT=$(oc get secret $CLIENT_CERT_SECRET -o 'go-template={{index .data "user.crt"}}' | base64 -d -)
-    CLIENT_KEY=$(oc get secret $CLIENT_CERT_SECRET -o 'go-template={{index .data "user.key"}}' | base64 -d -)
+    CLIENT_CRT=$(kubectl get secret $CLIENT_CERT_SECRET -n $NAMESPACE -o 'go-template={{index .data "user.crt"}}' | base64 -d -)
+    CLIENT_KEY=$(kubectl get secret $CLIENT_CERT_SECRET -n $NAMESPACE -o 'go-template={{index .data "user.key"}}' | base64 -d -)
 
     echo "Preparing keystore"
     export KEYSTORE_PASSWORD=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
@@ -63,5 +65,5 @@ then
     create_keystore /tmp/keystore.p12 $KEYSTORE_PASSWORD /tmp/user.crt /tmp/user.key
 
     # user.p12 user.password
-    oc create secret generic $KEYSTORE_SECRET --from-file=user.p12=/tmp/keystore.p12 --from-literal=user.password=$KEYSTORE_PASSWORD
+    kubectl create secret generic $KEYSTORE_SECRET --from-file=user.p12=/tmp/keystore.p12 --from-literal=user.password=$KEYSTORE_PASSWORD -n $NAMESPACE
 fi
