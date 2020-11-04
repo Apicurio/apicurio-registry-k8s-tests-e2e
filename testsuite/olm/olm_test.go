@@ -46,6 +46,13 @@ func installOperatorOLM() *OLMInstallationInfo {
 		Expect(errors.New("Env var " + utils.OLMCatalogSourceImageEnvVar + " is required")).ToNot(HaveOccurred())
 	}
 
+	const operatorSubscriptionName string = "apicurio-registry-sub"
+	const operatorGroupName string = "apicurio-registry-operator-group"
+	const catalogSourceName string = "apicurio-registry-catalog"
+	const operatorNamespace string = utils.OperatorNamespace
+
+	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
+
 	var catalogSourceNamespace string = utils.OLMCatalogSourceNamespace
 	err := kubernetesutils.CreateNamespace(suiteCtx.Clientset, catalogSourceNamespace)
 	if !kubeerrors.IsAlreadyExists(err) {
@@ -53,13 +60,6 @@ func installOperatorOLM() *OLMInstallationInfo {
 	}
 
 	log.Info("Using catalog source namespace " + catalogSourceNamespace)
-
-	const operatorSubscriptionName string = "apicurio-registry-sub"
-	const operatorGroupName string = "apicurio-registry-operator-group"
-	const catalogSourceName string = "apicurio-registry-catalog"
-	const operatorNamespace string = utils.OperatorNamespace
-
-	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
 	//catalog-source
 	catalog := olm.CreateCatalogSource(suiteCtx, catalogSourceNamespace, catalogSourceName)
