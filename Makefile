@@ -23,9 +23,18 @@ BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/i
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
 # olm variables
+export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
 OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
 CATALOG_SOURCE_IMAGE=docker.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
+
+# upgrade test variables
+export E2E_OLM_UPGRADE_CHANNEL=alpha
+export E2E_OLM_UPGRADE_OLD_CSV=apicurio-registry.v0.0.3-v1.2.3.final
+export E2E_OLM_UPGRADE_NEW_CSV=apicurio-registry.v0.0.4-dev
+export E2E_OLM_UPGRADE_OLD_CATALOG=operatorhubio-catalog
+export E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE=olm
+#E2E_OLM_CATALOG_SOURCE_IMAGE is used as new catalog
 
 # kafka streams variables
 STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.18.0/strimzi-cluster-operator-0.18.0.yaml
@@ -35,6 +44,8 @@ export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 run-operator-ci: kind-start kind-setup-olm pull-operator-repo setup-operator-deps run-operator-tests
 
 run-apicurio-ci: kind-start pull-operator-repo setup-apicurio-deps run-apicurio-tests
+
+run-upgrade-ci: kind-start kind-setup-olm pull-operator-repo kind-catalog-source-img run-upgrade-tests
 
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
 create-catalog-source-image:
@@ -117,6 +128,10 @@ run-operator-tests:
 run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
+
+run-upgrade-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v ./testsuite/upgrade
 
 run-security-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \

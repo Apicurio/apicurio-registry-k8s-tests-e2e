@@ -16,6 +16,7 @@ import (
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/olm"
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 
 	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
@@ -29,72 +30,47 @@ var _ = Describe("olm installation", func() {
 
 })
 
-const operatorSubscriptionName string = "apicurio-registry-sub"
-const operatorGroupName string = "apicurio-registry-operator-group"
-const catalogSourceName string = "apicurio-registry-catalog"
-const operatorNamespace string = utils.OperatorNamespace
-
-var catalogSourceNamespace string
-var operatorCSV string
-
-func logPodsAll() {
+func logPodsAll(operatorNamespace string) {
 	kubernetescli.Execute("get", "pod", "-n", operatorNamespace, "-o", "yaml")
 }
 
-func installOperatorOLM() {
+type OLMInstallationInfo struct {
+	CatalogSource *operatorsv1alpha1.CatalogSource
+	OperatorGroup *operatorsv1.OperatorGroup
+	Subscription  *operatorsv1alpha1.Subscription
+}
+
+func installOperatorOLM() *OLMInstallationInfo {
 
 	if utils.OLMCatalogSourceImage == "" {
 		Expect(errors.New("Env var " + utils.OLMCatalogSourceImageEnvVar + " is required")).ToNot(HaveOccurred())
 	}
 
-	if utils.OLMCatalogSourceNamespace == "" {
-		catalogSourceNamespace = utils.OperatorNamespace
-	} else {
-		catalogSourceNamespace = utils.OLMCatalogSourceNamespace
-		err := kubernetesutils.CreateNamespace(suiteCtx.Clientset, catalogSourceNamespace)
-		if !kubeerrors.IsAlreadyExists(err) {
-			Expect(err).ToNot(HaveOccurred())
-		}
+	var catalogSourceNamespace string = utils.OLMCatalogSourceNamespace
+	err := kubernetesutils.CreateNamespace(suiteCtx.Clientset, catalogSourceNamespace)
+	if !kubeerrors.IsAlreadyExists(err) {
+		Expect(err).ToNot(HaveOccurred())
 	}
+
 	log.Info("Using catalog source namespace " + catalogSourceNamespace)
+
+	const operatorSubscriptionName string = "apicurio-registry-sub"
+	const operatorGroupName string = "apicurio-registry-operator-group"
+	const catalogSourceName string = "apicurio-registry-catalog"
+	const operatorNamespace string = utils.OperatorNamespace
 
 	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, operatorNamespace)
 
 	//catalog-source
-	_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Create(&operatorsv1alpha1.CatalogSource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      catalogSourceName,
-			Namespace: catalogSourceNamespace,
-		},
-		Spec: operatorsv1alpha1.CatalogSourceSpec{
-			DisplayName: "Apicurio Registry Operator Catalog Source",
-			Image:       utils.OLMCatalogSourceImage,
-			Publisher:   "apicurio-registry-qe",
-			SourceType:  operatorsv1alpha1.SourceTypeGrpc,
-		},
-	})
-	Expect(err).ToNot(HaveOccurred())
+	catalog := olm.CreateCatalogSource(suiteCtx, catalogSourceNamespace, catalogSourceName)
 
-	timeout := 300 * time.Second
-	log.Info("Waiting for catalog source", "timeout", timeout)
-	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
-		if err != nil {
-			if kubeerrors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-		return true, nil
-	})
-	kubernetescli.GetPods(catalogSourceNamespace)
-	if err != nil {
-		kubernetescli.Execute("get", "catalogsource", catalogSourceName, "-n", catalogSourceNamespace, "-o", "yaml")
-	}
-	Expect(err).ToNot(HaveOccurred())
+	//operator-group
+	operatorGroup := olm.CreateOperatorGroup(suiteCtx, operatorNamespace, operatorGroupName)
+
+	//subscription
 
 	//TODO make this timeout configurable
-	timeout = 540 * time.Second
+	timeout := 540 * time.Second
 	log.Info("Waiting for package manifest to be available", "timeout", timeout)
 	var packageManifest *packagev1.PackageManifest = nil
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
@@ -113,35 +89,16 @@ func installOperatorOLM() {
 		return false, nil
 	})
 	if err != nil {
-		logPodsAll()
+		logPodsAll(operatorNamespace)
 		kubernetescli.Execute("get", "packagemanifest")
 	}
 	Expect(err).ToNot(HaveOccurred())
-
-	//operator-group
-	log.Info("Creating operator group")
-	_, err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Create(&operatorsv1.OperatorGroup{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorGroupName,
-			Namespace: operatorNamespace,
-		},
-		Spec: operatorsv1.OperatorGroupSpec{
-			TargetNamespaces: []string{operatorNamespace},
-		},
-	})
-	if err != nil {
-		logPodsAll()
-	}
-	Expect(err).ToNot(HaveOccurred())
-
-	//subscription
 
 	// labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
 	// pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	// Expect(err).ToNot(HaveOccurred())
 	// var packageManifest *packagev1.PackageManifest = findApicurioPackageManifest(pkgsList)
 	Expect(packageManifest).ToNot(BeNil())
-	var packageName string = packageManifest.Name
 	var channelName string = packageManifest.Status.DefaultChannel
 	var channelCSV string
 	for _, channel := range packageManifest.Status.Channels {
@@ -150,68 +107,44 @@ func installOperatorOLM() {
 		}
 	}
 	Expect(channelCSV).NotTo(BeNil())
-	operatorCSV = channelCSV
 
-	log.Info("Creating operator subscription", "package", packageName, "channel", channelName, "csv", channelCSV)
-	_, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Create(&operatorsv1alpha1.Subscription{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      operatorSubscriptionName,
-			Namespace: operatorNamespace,
-		},
-		Spec: &operatorsv1alpha1.SubscriptionSpec{
-			Package:                packageName,
-			CatalogSource:          catalogSourceName,
-			CatalogSourceNamespace: catalogSourceNamespace,
-			StartingCSV:            channelCSV,
-			Channel:                channelName,
-			InstallPlanApproval:    operatorsv1alpha1.ApprovalAutomatic,
-		},
+	sub := olm.CreateSubscription(suiteCtx, &olm.CreateSubscriptionRequest{
+		SubscriptionName:       operatorSubscriptionName,
+		SubscriptionNamespace:  operatorNamespace,
+		CatalogSourceName:      catalogSourceName,
+		CatalogSourceNamespace: catalogSourceNamespace,
+		ChannelCSV:             channelCSV,
+		ChannelName:            channelName,
 	})
-	if err != nil {
-		logPodsAll()
-	}
-	Expect(err).ToNot(HaveOccurred())
 
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)
+	return &OLMInstallationInfo{
+		CatalogSource: catalog,
+		OperatorGroup: operatorGroup,
+		Subscription:  sub,
+	}
 
 }
 
-func uninstallOperatorOLM() {
+func uninstallOperatorOLM(olminfo *OLMInstallationInfo) {
 
-	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID, operatorNamespace)
+	logs.SaveOperatorLogs(suiteCtx.Clientset, suiteCtx.SuiteID, olminfo.Subscription.Namespace)
 
 	log.Info("Uninstalling operator")
 
-	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Delete(operatorSubscriptionName, &metav1.DeleteOptions{})
-	if err != nil && !kubeerrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
-	}
+	olm.DeleteSubscription(suiteCtx, olminfo.Subscription)
 
-	if operatorCSV != "" {
-		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(operatorNamespace).Delete(operatorCSV, &metav1.DeleteOptions{})
-		Expect(err).ToNot(HaveOccurred())
+	olm.DeleteOperatorGroup(suiteCtx, olminfo.OperatorGroup.Namespace, olminfo.OperatorGroup.Name)
 
-		kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, operatorNamespace)
-	}
+	olm.DeleteCatalogSource(suiteCtx, olminfo.CatalogSource.Namespace, olminfo.CatalogSource.Name)
 
-	err = suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
-	if err != nil && !kubeerrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	err = suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Delete(catalogSourceName, &metav1.DeleteOptions{})
-	if err != nil && !kubeerrors.IsNotFound(err) {
-		Expect(err).ToNot(HaveOccurred())
-	}
-
-	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, operatorNamespace)
+	//TODO verify, this namespace may change in the future
+	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, olminfo.Subscription.Namespace)
 
 }
 
 func findApicurioPackageManifest(pkgsList *packagev1.PackageManifestList) *packagev1.PackageManifest {
 	for _, pkg := range pkgsList.Items {
-		//TODO extract this to env var
-		if pkg.Name == "apicurio-registry" || pkg.Name == "service-registry-operator" {
+		if pkg.Name == utils.OLMApicurioPackageManifestName {
 			return &pkg
 		}
 	}

@@ -7,18 +7,27 @@ import (
 
 //constants to be used in testsuite
 const (
-	SuiteProjectDirEnvVar           = "E2E_SUITE_PROJECT_DIR"
-	ApicurioProjectDirEnvVar        = "E2E_APICURIO_PROJECT_DIR"
-	ApicurioTestsProfileEnvVar      = "E2E_APICURIO_TESTS_PROFILE"
-	ExtraMavenArgsEnvVar            = "E2E_EXTRA_MAVEN_ARGS"
-	OLMCatalogSourceImageEnvVar     = "E2E_OLM_CATALOG_SOURCE_IMAGE"
-	OperatorBundlePathEnvVar        = "E2E_OPERATOR_BUNDLE_PATH"
-	StrimziOperatorBundlePathEnvVar = "E2E_STRIMZI_BUNDLE_PATH"
-	OLMCatalogSourceNamespaceEnvVar = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"
+	SuiteProjectDirEnvVar                = "E2E_SUITE_PROJECT_DIR"
+	ApicurioProjectDirEnvVar             = "E2E_APICURIO_PROJECT_DIR"
+	ApicurioTestsProfileEnvVar           = "E2E_APICURIO_TESTS_PROFILE"
+	ExtraMavenArgsEnvVar                 = "E2E_EXTRA_MAVEN_ARGS"
+	OLMCatalogSourceImageEnvVar          = "E2E_OLM_CATALOG_SOURCE_IMAGE"
+	OperatorBundlePathEnvVar             = "E2E_OPERATOR_BUNDLE_PATH"
+	StrimziOperatorBundlePathEnvVar      = "E2E_STRIMZI_BUNDLE_PATH"
+	OLMCatalogSourceNamespaceEnvVar      = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"
+	OLMApicurioPackageManifestNameEnvVar = "E2E_OLM_PACKAGE_MANIFEST_NAME" //mandatory env var for olm tests
+
+	OLMUpgradeChannelEnvVar             = "E2E_OLM_UPGRADE_CHANNEL"
+	OLMUpgradeOldCatalogEnvVar          = "E2E_OLM_UPGRADE_OLD_CATALOG"
+	OLMUpgradeOldCatalogNamespaceEnvVar = "E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE"
+	OLMUpgradeOldCSVEnvVar              = "E2E_OLM_UPGRADE_OLD_CSV"
+	OLMUpgradeNewCSVEnvVar              = "E2E_OLM_UPGRADE_NEW_CSV"
 
 	OperatorNamespace      = "apicurio-registry-e2e"
 	OperatorDeploymentName = "apicurio-registry-operator"
 	APIPollInterval        = 2 * time.Second
+	MediumPollInterval     = 5 * time.Second
+	LongPollInterval       = 10 * time.Second
 
 	StorageJpa        = "jpa"
 	StorageStreams    = "streams"
@@ -48,3 +57,13 @@ var StrimziOperatorBundlePath string = os.Getenv(StrimziOperatorBundlePathEnvVar
 
 //OLMCatalogSourceNamespace value of OLMCatalogSourceNamespaceEnvVar
 var OLMCatalogSourceNamespace string = os.Getenv(OLMCatalogSourceNamespaceEnvVar)
+
+//OLMApicurioPackageManifestName value of OLMApicurioPackageManifestNameEnvVar
+var OLMApicurioPackageManifestName string = os.Getenv(OLMApicurioPackageManifestNameEnvVar)
+
+var OLMUpgradeOldCSV string = os.Getenv(OLMUpgradeOldCSVEnvVar)
+var OLMUpgradeNewCSV string = os.Getenv(OLMUpgradeNewCSVEnvVar)
+
+var OLMUpgradeChannel string = os.Getenv(OLMUpgradeChannelEnvVar)
+var OLMUpgradeOldCatalog string = os.Getenv(OLMUpgradeOldCatalogEnvVar)
+var OLMUpgradeOldCatalogNamespace string = os.Getenv(OLMUpgradeOldCatalogNamespaceEnvVar)

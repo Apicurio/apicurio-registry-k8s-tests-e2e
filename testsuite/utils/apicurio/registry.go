@@ -49,7 +49,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 		registryReplicas = int32(registry.Spec.Deployment.Replicas)
 	}
 
-	waitForRegistryReady(suiteCtx, registry.Namespace, registry.Name, registryReplicas)
+	WaitForRegistryReady(suiteCtx, registry.Namespace, registry.Name, registryReplicas)
 
 	labelsSet := labels.Set(map[string]string{"app": registry.Name})
 
@@ -94,7 +94,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 
 }
 
-func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, registryName string, registryReplicas int32) {
+func WaitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, registryName string, registryReplicas int32) {
 
 	// var registryDeploymentName string = registryName
 
@@ -157,6 +157,7 @@ func waitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, regist
 		return false, nil
 	})
 	kubernetescli.GetPods(namespace)
+	kubernetescli.Execute("get", "apicurioregistry", "-o", "yaml", "-n", namespace)
 	Expect(err).ToNot(HaveOccurred())
 	log.Info("Registry deployment is ready")
 }
