@@ -67,7 +67,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 	var _ = It("backup and restore", func() {
 		ctx := &types.TestContext{}
 		ctx.RegistryNamespace = utils.OperatorNamespace
-		defer saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+		defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	})
 
@@ -110,14 +110,14 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 		testContext.RegistryNamespace = utils.OperatorNamespace
 	}
 
-	defer cleanRegistryDeployment(suiteCtx, testContext)
+	defer CleanRegistryDeployment(suiteCtx, testContext)
 
-	deployRegistryStorage(suiteCtx, testContext)
+	DeployRegistryStorage(suiteCtx, testContext)
 	log.Info("-----------------------------------------------------------")
 	testFunction()
 }
 
-func deployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+func DeployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	if ctx.Storage == utils.StorageJpa {
 		jpa.DeployJpaRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageStreams {
@@ -130,11 +130,9 @@ func deployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 }
 
 //clean namespace, only thing that can be left is registry operator
-func cleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) error {
+func CleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) error {
 
-	log.Info("-----------------------------------------------------------")
-
-	saveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+	SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 
 	if ctx.Storage == utils.StorageJpa {
 		jpa.RemoveJpaRegistry(suiteCtx, ctx)
@@ -149,9 +147,14 @@ func cleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContex
 	return nil
 }
 
-func saveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+func SaveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+
+	log.Info("-----------------------------------------------------------")
+
 	testDescription := CurrentGinkgoTestDescription()
 	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testDescription)
+
+	log.Info("Executing cleanups")
 
 	ctx.ExecuteCleanups()
 }

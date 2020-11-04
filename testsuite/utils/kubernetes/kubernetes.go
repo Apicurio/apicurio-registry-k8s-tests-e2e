@@ -44,15 +44,18 @@ func CreateNamespace(clientset *kubernetes.Clientset, namespace string) error {
 
 //CreateTestNamespace creates one namespace with the given name
 func CreateTestNamespace(clientset *kubernetes.Clientset, namespace string) {
-	log.Info("Creating namespace", "name", namespace)
-	_, err := clientset.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	err := CreateNamespace(clientset, namespace)
 	Expect(err).ToNot(HaveOccurred())
 }
 
 //DeleteTestNamespace removes one namespace and waits until it's deleted
 func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	ns, err := clientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
-	if err != nil && !errors.IsNotFound(err) {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info("Namespace not found, doing nothing", "name", namespace)
+			return
+		}
 		Expect(err).ToNot(HaveOccurred())
 	}
 	if ns != nil {
@@ -113,6 +116,7 @@ func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace
 		}
 		return true, nil
 	})
+	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 }
 

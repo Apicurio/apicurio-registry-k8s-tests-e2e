@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test_profile: [smoke, acceptance, cluster, ui, all]
+        test_profile: [smoke, acceptance, cluster, upgrade]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
