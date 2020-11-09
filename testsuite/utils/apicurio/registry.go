@@ -83,6 +83,8 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 		ctx.RegistryPort = "80"
 	}
 
+	kubernetescli.Execute("get", "svc", "-n", ctx.RegistryNamespace)
+
 	//TODO fix this, operator usability problem, service name should be consistent
 	svcs, err := suiteCtx.Clientset.CoreV1().Services(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
