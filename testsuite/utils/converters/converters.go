@@ -140,14 +140,15 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		extraConfig,
 	)
 
-	expectedRecords := 1
-
 	recordsResult := make(chan KafkaRecordsResult)
 
-	go readKafkaMessages(expectedRecords, kafkaClusterInfo.ExternalBootstrapServers, debeziumTopic, recordsResult)
+	minimumExpectedRecords := 1
+	go readKafkaMessages(minimumExpectedRecords, kafkaClusterInfo.ExternalBootstrapServers, debeziumTopic, recordsResult)
 
-	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
-	// executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
+	producedRecords := 4
+	for i := 1; i <= producedRecords; i++ {
+		executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Test record "+strconv.Itoa(i)+"')")
+	}
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
 
 	kafkaRecords := <-recordsResult
@@ -158,7 +159,8 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	records := kafkaRecords.records
 
-	Expect(len(records)).To(BeIdenticalTo(expectedRecords))
+	log.Info("Verifiying records", "received", len(records), "minumumExpected", minimumExpectedRecords)
+	Expect(len(records) >= minimumExpectedRecords).To(BeTrue())
 
 	Expect(records[0].Key[0]).To(Equal(byte(0)))
 	Expect(records[0].Value[0]).To(Equal(byte(0)))
@@ -171,7 +173,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 }
 
-func readKafkaMessages(expectedRecords int, bootstrapServers string, topic string, result chan KafkaRecordsResult) {
+func readKafkaMessages(minimumExpectedRecords int, bootstrapServers string, topic string, result chan KafkaRecordsResult) {
 	dialer := &kafka.Dialer{
 		Timeout:   10 * time.Second,
 		DualStack: true,
@@ -189,7 +191,7 @@ func readKafkaMessages(expectedRecords int, bootstrapServers string, topic strin
 
 	var records []*kafka.Message = make([]*kafka.Message, 0)
 	timeout := 60 * time.Second
-	log.Info("Waiting for kafka consumer to receive "+strconv.Itoa(expectedRecords)+" records", "timeout", timeout)
+	log.Info("Waiting for kafka consumer to receive at least "+strconv.Itoa(minimumExpectedRecords)+" records", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		timeout, cf := context.WithTimeout(context.Background(), 10*time.Second)
 		m, err := r.ReadMessage(timeout)
@@ -201,7 +203,7 @@ func readKafkaMessages(expectedRecords int, bootstrapServers string, topic strin
 		log.Info("kafka message received")
 		log.Info(string(m.Value))
 		records = append(records, &m)
-		return len(records) >= expectedRecords, nil
+		return len(records) >= minimumExpectedRecords, nil
 	})
 	if err != nil {
 		result <- KafkaRecordsResult{err: err}
