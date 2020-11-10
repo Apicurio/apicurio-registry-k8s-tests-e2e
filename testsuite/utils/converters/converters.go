@@ -140,49 +140,23 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		extraConfig,
 	)
 
-	dialer := &kafka.Dialer{
-		Timeout:   10 * time.Second,
-		DualStack: true,
-		TLS: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-
-	r := kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{kafkaClusterInfo.ExternalBootstrapServers},
-		GroupID: "apicurio-registry-test",
-		Topic:   debeziumTopic,
-		Dialer:  dialer,
-	})
-
 	expectedRecords := 1
+
+	recordsResult := make(chan KafkaRecordsResult)
+
+	go readKafkaMessages(expectedRecords, kafkaClusterInfo.ExternalBootstrapServers, debeziumTopic, recordsResult)
+
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Be Awesome')")
 	// executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (2, 'Even more')")
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
 
-	log.Info("Waiting for kafka consumer to receive " + strconv.Itoa(expectedRecords) + " records")
+	kafkaRecords := <-recordsResult
 
-	var records []*kafka.Message = make([]*kafka.Message, 0)
-	for {
-		timeout, cf := context.WithTimeout(context.Background(), 60*time.Second)
-		m, err := r.ReadMessage(timeout)
-		cf()
-		if err != nil {
-			log.Info("Error " + err.Error())
-			break
-		}
-		log.Info("kafka message received")
-		log.Info(string(m.Value))
-		records = append(records, &m)
-		if len(records) >= expectedRecords {
-			break
-		}
+	if kafkaRecords.err != nil {
+		Expect(kafkaRecords.err).NotTo(HaveOccurred())
 	}
 
-	if err := r.Close(); err != nil {
-		log.Info("failed to close reader:", err)
-		Expect(err).NotTo(HaveOccurred())
-	}
+	records := kafkaRecords.records
 
 	Expect(len(records)).To(BeIdenticalTo(expectedRecords))
 
@@ -195,6 +169,54 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	log.Info("Artifacts after debezium are " + strings.Join(artifacts, ", "))
 	Expect(artifacts).Should(ContainElements(debeziumTopic+"-key", debeziumTopic+"-value"))
 
+}
+
+func readKafkaMessages(expectedRecords int, bootstrapServers string, topic string, result chan KafkaRecordsResult) {
+	dialer := &kafka.Dialer{
+		Timeout:   10 * time.Second,
+		DualStack: true,
+		TLS: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+
+	r := kafka.NewReader(kafka.ReaderConfig{
+		Brokers: []string{bootstrapServers},
+		GroupID: "apicurio-registry-test",
+		Topic:   topic,
+		Dialer:  dialer,
+	})
+
+	var records []*kafka.Message = make([]*kafka.Message, 0)
+	timeout := 60 * time.Second
+	log.Info("Waiting for kafka consumer to receive "+strconv.Itoa(expectedRecords)+" records", "timeout", timeout)
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		timeout, cf := context.WithTimeout(context.Background(), 10*time.Second)
+		m, err := r.ReadMessage(timeout)
+		cf()
+		if err != nil {
+			log.Info("Error " + err.Error())
+			return false, nil
+		}
+		log.Info("kafka message received")
+		log.Info(string(m.Value))
+		records = append(records, &m)
+		return len(records) >= expectedRecords, nil
+	})
+	if err != nil {
+		result <- KafkaRecordsResult{err: err}
+	} else {
+		result <- KafkaRecordsResult{records: records}
+	}
+
+	if err := r.Close(); err != nil {
+		log.Error(err, "failed to close reader")
+	}
+}
+
+type KafkaRecordsResult struct {
+	err     error
+	records []*kafka.Message
 }
 
 type DebeziumConnector struct {
