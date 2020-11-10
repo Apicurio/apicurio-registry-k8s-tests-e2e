@@ -28,7 +28,8 @@ func CommonTestCases(suiteCtx *types.SuiteContext) {
 			executeTestCase(suiteCtx, testContext)
 		},
 
-		Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
+		//TODO revert all jpa comments when operator supports SQL persistence
+		// Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
 		Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
 		Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 	)
@@ -46,7 +47,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 				executeTestCase(suiteCtx, testContext)
 			},
 
-			Entry("jpa", &types.TestContext{Storage: utils.StorageJpa, Replicas: 3}),
+			// Entry("jpa", &types.TestContext{Storage: utils.StorageJpa, Replicas: 3}),
 			Entry("streams", &types.TestContext{Storage: utils.StorageStreams, Replicas: 3}),
 			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, Replicas: 3}),
 		)
@@ -58,18 +59,18 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext) {
 				executeConvertersTestCase(suiteCtx, testContext)
 			},
 
-			Entry("postgres", &types.TestContext{Storage: utils.StorageJpa}),
+			// Entry("postgres", &types.TestContext{Storage: utils.StorageJpa}),
 			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
+			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan}),
 		)
 	}
 
-	var _ = It("backup and restore", func() {
-		ctx := &types.TestContext{}
-		ctx.RegistryNamespace = utils.OperatorNamespace
-		defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-		jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
-	})
+	// var _ = It("backup and restore", func() {
+	// 	ctx := &types.TestContext{}
+	// 	ctx.RegistryNamespace = utils.OperatorNamespace
+	// 	defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+	// 	jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+	// })
 
 	var _ = DescribeTable("streams security",
 		func(testContext *types.TestContext) {
