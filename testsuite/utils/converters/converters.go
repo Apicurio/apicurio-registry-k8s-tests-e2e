@@ -147,7 +147,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	producedRecords := 4
 	for i := 1; i <= producedRecords; i++ {
-		executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values (1, 'Test record "+strconv.Itoa(i)+"')")
+		executeSQL(testContext.RegistryNamespace, postgresqlPodName, "insert into todo.Todo values ("+strconv.Itoa(i)+", 'Test record "+strconv.Itoa(i)+"')")
 	}
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "select * from todo.Todo")
 
