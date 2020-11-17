@@ -210,7 +210,8 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 							Name: name,
 							// Image: "centos/postgresql-10-centos7:20200917-804ef01",
 							// Image: "quay.io/debezium/example-postgres:1.2",
-							Image: "quay.io/debezium/postgres:10",
+							// Image: "quay.io/debezium/postgres:10",
+							Image: "quay.io/debezium/postgres:12",
 							Env: []corev1.EnvVar{
 								// {
 								// 	Name:  "POSTGRESQL_ADMIN_PASSWORD",

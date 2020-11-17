@@ -39,6 +39,12 @@ func IsOCP(config *rest.Config) (bool, error) {
 func CreateNamespace(clientset *kubernetes.Clientset, namespace string) error {
 	log.Info("Creating namespace", "name", namespace)
 	_, err := clientset.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	if err == nil && utils.ImagePullSecretUser != "" {
+		//create pull secret
+		log.Info("Creating image pull secret", "name", utils.ImagePullSecretName)
+		kubernetescli.ExecuteCmd(false, "create", "secret", "-n", namespace, "docker-registry", utils.ImagePullSecretName, "--docker-username="+utils.ImagePullSecretUser, "--docker-password="+utils.ImagePullSecretPassword, "--docker-server="+utils.ImagePullSecretServer)
+		SetPullSecret(clientset, "default", namespace)
+	}
 	return err
 }
 
@@ -169,5 +175,26 @@ func WaitForObjectDeleted(name string, apiCall func() (interface{}, error)) {
 		}
 		return false, nil
 	})
+	Expect(err).ToNot(HaveOccurred())
+}
+
+func SetPullSecret(clientset *kubernetes.Clientset, serviceAccount string, namespace string) {
+	timeout := 10 * time.Second
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		_, err := clientset.CoreV1().ServiceAccounts(namespace).Get(serviceAccount, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
+	Expect(err).ToNot(HaveOccurred())
+	log.Info("Binding pull secret to service account", "name", serviceAccount)
+	sa, err := clientset.CoreV1().ServiceAccounts(namespace).Get(serviceAccount, metav1.GetOptions{})
+	Expect(err).ToNot(HaveOccurred())
+	sa.ImagePullSecrets = append(sa.ImagePullSecrets, v1.LocalObjectReference{Name: utils.ImagePullSecretName})
+	_, err = clientset.CoreV1().ServiceAccounts(namespace).Update(sa)
 	Expect(err).ToNot(HaveOccurred())
 }

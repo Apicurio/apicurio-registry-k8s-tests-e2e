@@ -46,7 +46,9 @@ func installOperator() {
 	} else {
 
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "service_account.yaml"))
-		//maybe set pull secret
+		if utils.ImagePullSecretUser != "" {
+			kubernetesutils.SetPullSecret(suiteCtx.Clientset, "apicurio-registry-operator", operatorNamespace)
+		}
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "role.yaml"))
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "role_binding.yaml"))
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "cluster_role.yaml"))

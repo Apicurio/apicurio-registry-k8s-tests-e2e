@@ -23,6 +23,11 @@ const (
 	OLMUpgradeOldCSVEnvVar              = "E2E_OLM_UPGRADE_OLD_CSV"
 	OLMUpgradeNewCSVEnvVar              = "E2E_OLM_UPGRADE_NEW_CSV"
 
+	ImagePullSecretServerEnvVar   = "E2E_PULL_SECRET_SERVER"
+	ImagePullSecretUserEnvVar     = "E2E_PULL_SECRET_USER"
+	ImagePullSecretPasswordEnvVar = "E2E_PULL_SECRET_PASSWORD"
+	ImagePullSecretName           = "apicurio-registry-pull-secret"
+
 	OperatorNamespace      = "apicurio-registry-e2e"
 	OperatorDeploymentName = "apicurio-registry-operator"
 	APIPollInterval        = 2 * time.Second
@@ -67,3 +72,7 @@ var OLMUpgradeNewCSV string = os.Getenv(OLMUpgradeNewCSVEnvVar)
 var OLMUpgradeChannel string = os.Getenv(OLMUpgradeChannelEnvVar)
 var OLMUpgradeOldCatalog string = os.Getenv(OLMUpgradeOldCatalogEnvVar)
 var OLMUpgradeOldCatalogNamespace string = os.Getenv(OLMUpgradeOldCatalogNamespaceEnvVar)
+
+var ImagePullSecretServer string = os.Getenv(ImagePullSecretServerEnvVar)
+var ImagePullSecretUser string = os.Getenv(ImagePullSecretUserEnvVar)
+var ImagePullSecretPassword string = os.Getenv(ImagePullSecretPasswordEnvVar)

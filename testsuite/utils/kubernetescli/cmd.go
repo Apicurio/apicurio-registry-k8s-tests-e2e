@@ -61,10 +61,14 @@ func GetVolumes(namespace string) {
 }
 
 func Execute(args ...string) {
-	utils.ExecuteCmdOrDie(true, string(GetCLIKubernetesClient().Cmd), args...)
+	ExecuteCmd(true, args...)
+}
+
+func ExecuteCmd(logOutput bool, args ...string) {
+	utils.ExecuteCmdOrDieCore(logOutput, logOutput, string(GetCLIKubernetesClient().Cmd), args...)
 }
 
 func RedirectOutput(stdOutFile *os.File, stdErrFile *os.File, args ...string) {
-	err := utils.Execute(&utils.Command{Cmd: append([]string{string(GetCLIKubernetesClient().Cmd)}, args...)}, stdOutFile, stdErrFile)
+	err := utils.Execute(&utils.Command{Cmd: append([]string{string(GetCLIKubernetesClient().Cmd)}, args...)}, stdOutFile, stdErrFile, true)
 	Expect(err).ToNot(HaveOccurred())
 }

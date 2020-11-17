@@ -57,13 +57,13 @@ func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 		_, err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Create(ocpSeleniumRoute(seleniumNamespace))
 		Expect(err).ToNot(HaveOccurred())
 	} else {
-		//TODO fix this, wait properly for ingress controller to be ready
-		time.Sleep(30 * time.Second)
+		kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 150*time.Second, "ingress-nginx", "ingress-nginx-controller", 1)
+
 		err = suiteCtx.K8sClient.Create(context.TODO(), seleniumIngress(seleniumNamespace))
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, seleniumNamespace, seleniumName, 1)
+	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 180*time.Second, seleniumNamespace, seleniumName, 1)
 
 	if suiteCtx.IsOpenshift {
 		seleniumRoute, err := suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Get(seleniumName, metav1.GetOptions{})
