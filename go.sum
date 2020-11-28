@@ -20,6 +20,7 @@ contrib.go.opencensus.io/exporter/ocagent v0.6.0/go.mod h1:zmKjrJcdo0aYcVS7bmEeS
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/Apicurio/apicurio-registry-operator v0.0.0-20200716121633-a0066804b59c h1:SdDCk9c3K86NujxFYA0uR5bccopyiDVzh8eZBzk6gYE=
 github.com/Apicurio/apicurio-registry-operator v0.0.0-20200716121633-a0066804b59c/go.mod h1:si07BxBd5V/+0RG4gATkKeOOZZIe7B6Wzxc5sc7b8NE=
+github.com/Apicurio/apicurio-registry-operator v0.0.4 h1:8dN08kMedVuShmag6TodM0PK1GmfG2C6O3xSeTj3DS8=
 github.com/Azure/azure-pipeline-go v0.2.1/go.mod h1:UGSo8XybXnIGZ3epmeBw7Jdz+HiUVpqIlpz/HKHylF4=
 github.com/Azure/azure-pipeline-go v0.2.2/go.mod h1:4rQ/NZncSvGqNkkOsNpOU1tgoNuIlp9AfUH5G1tvCHc=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=

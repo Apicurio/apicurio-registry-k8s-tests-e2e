@@ -13,8 +13,6 @@ import (
 
 var log = logf.Log.WithName("infinispan")
 
-var registryName string
-
 //DeployInfinispanRegistry deploys an ApicurioRegistry CR using infinispan as storage
 func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
@@ -25,10 +23,9 @@ func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestConte
 		replicas = ctx.Replicas
 	}
 
-	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: registryName,
+			Name: "apicurio-registry-" + ctx.Storage,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -51,6 +48,6 @@ func DeployInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestConte
 //RemoveInfinispanRegistry uninstalls registry CR
 func RemoveInfinispanRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
 }

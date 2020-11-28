@@ -1,4 +1,4 @@
-package olm
+package multinamespace
 
 import (
 	"testing"
@@ -8,7 +8,8 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/olm"
 	suite "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -19,26 +20,21 @@ var suiteCtx *types.SuiteContext
 
 func init() {
 	suite.SetFlags()
-
-	if utils.OLMCatalogSourceNamespace == "" {
-		utils.OLMCatalogSourceNamespace = utils.OperatorNamespace
-	}
-
 }
 
 func TestApicurioE2E(t *testing.T) {
 	suiteCtx = suite.NewSuiteContext("olm")
-	suite.RunSuite(t, "Operator OLM Testsuite", suiteCtx)
+	suite.RunSuite(t, "Operator OLM Multinamespace Testsuite", suiteCtx)
 }
 
-var olminfo *OLMInstallationInfo
+var olminfo *olm.OLMInstallationInfo
 
 var _ = BeforeSuite(func(done Done) {
 
 	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
-	olminfo = installOperatorOLM()
+	olminfo = olm.InstallOperatorOLM(suiteCtx, utils.OLMClusterWideOperatorsNamespace, true)
 
 	close(done)
 
@@ -46,7 +42,7 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = AfterSuite(func() {
 
-	uninstallOperatorOLM(olminfo)
+	olm.UninstallOperatorOLM(suiteCtx, olminfo)
 
 	suite.TearDownSuite(suiteCtx)
 

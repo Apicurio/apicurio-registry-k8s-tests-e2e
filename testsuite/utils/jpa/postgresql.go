@@ -31,8 +31,6 @@ var log = logf.Log.WithName("postgresql")
 
 const registryPostgresqlName string = "registry-db"
 
-var registryName string
-
 //DeployJpaRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
 func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
@@ -47,10 +45,9 @@ func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		replicas = ctx.Replicas
 	}
 
-	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: registryName,
+			Name: "apicurio-registry-" + ctx.Storage,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -75,7 +72,7 @@ func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 //RemoveJpaRegistry uninstalls registry CR and postgresql database
 func RemoveJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
 	RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, ctx.RegistryNamespace, registryPostgresqlName)
 

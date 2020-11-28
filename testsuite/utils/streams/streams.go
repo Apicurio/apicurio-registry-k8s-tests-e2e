@@ -28,8 +28,6 @@ var log = logf.Log.WithName("streams")
 
 var bundlePath string = utils.StrimziOperatorBundlePath
 
-var registryName string
-
 //DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
 func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
@@ -55,10 +53,9 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 		replicas = ctx.Replicas
 	}
 
-	registryName = "apicurio-registry-" + ctx.Storage
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: registryName,
+			Name: "apicurio-registry-" + ctx.Storage,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -129,7 +126,7 @@ func RemoveStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 
 	defer os.Remove(bundlePath)
 
-	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, registryName)
+	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
 	if ctx.Security == "tls" {
 		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Name+"-cluster-ca-truststore", "-n", ctx.RegistryNamespace)

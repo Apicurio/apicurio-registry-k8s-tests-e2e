@@ -143,7 +143,7 @@ func TearDownSuite(suiteCtx *types.SuiteContext) {
 func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	if utils.SuiteProjectDir == "" {
-		panic("Env var " + utils.SuiteProjectDirEnvVar + " is required")
+		panic("Env var utils.suiteProjectDirEnvVar is required")
 	}
 
 	RegisterFailHandler(Fail)
