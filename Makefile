@@ -27,11 +27,13 @@ export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
 OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
 CATALOG_SOURCE_IMAGE=docker.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
+export E2E_OLM_CATALOG_SOURCE_NAMESPACE=olm
+export E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE=operators
 
 # upgrade test variables
 export E2E_OLM_UPGRADE_CHANNEL=alpha
-export E2E_OLM_UPGRADE_OLD_CSV=apicurio-registry.v0.0.3-v1.2.3.final
-export E2E_OLM_UPGRADE_NEW_CSV=apicurio-registry.v0.0.4-dev
+export E2E_OLM_UPGRADE_OLD_CSV=apicurio-registry.v0.0.4-v1.3.2.final
+export E2E_OLM_UPGRADE_NEW_CSV=apicurio-registry.v0.0.5-dev
 export E2E_OLM_UPGRADE_OLD_CATALOG=operatorhubio-catalog
 export E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE=olm
 #E2E_OLM_CATALOG_SOURCE_IMAGE is used as new catalog

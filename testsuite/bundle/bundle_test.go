@@ -16,15 +16,15 @@ import (
 	testcase "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/testcase"
 )
 
-var _ = Describe("bundle installation", func() {
-
-	testcase.CommonTestCases(suiteCtx)
-	testcase.BundleOnlyTestCases(suiteCtx)
-
-})
-
 var bundlePath string = utils.OperatorBundlePath
 var operatorNamespace string = utils.OperatorNamespace
+
+var _ = Describe("bundle installation", func() {
+
+	testcase.CommonTestCases(suiteCtx, operatorNamespace)
+	testcase.BundleOnlyTestCases(suiteCtx, operatorNamespace)
+
+})
 
 func installOperator() {
 

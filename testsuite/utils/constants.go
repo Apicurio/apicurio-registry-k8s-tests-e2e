@@ -7,25 +7,27 @@ import (
 
 //constants to be used in testsuite
 const (
-	SuiteProjectDirEnvVar                = "E2E_SUITE_PROJECT_DIR"
-	ApicurioProjectDirEnvVar             = "E2E_APICURIO_PROJECT_DIR"
-	ApicurioTestsProfileEnvVar           = "E2E_APICURIO_TESTS_PROFILE"
-	ExtraMavenArgsEnvVar                 = "E2E_EXTRA_MAVEN_ARGS"
-	OLMCatalogSourceImageEnvVar          = "E2E_OLM_CATALOG_SOURCE_IMAGE"
-	OperatorBundlePathEnvVar             = "E2E_OPERATOR_BUNDLE_PATH"
-	StrimziOperatorBundlePathEnvVar      = "E2E_STRIMZI_BUNDLE_PATH"
-	OLMCatalogSourceNamespaceEnvVar      = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"
-	OLMApicurioPackageManifestNameEnvVar = "E2E_OLM_PACKAGE_MANIFEST_NAME" //mandatory env var for olm tests
+	suiteProjectDirEnvVar           = "E2E_SUITE_PROJECT_DIR"
+	apicurioProjectDirEnvVar        = "E2E_APICURIO_PROJECT_DIR"
+	apicurioTestsProfileEnvVar      = "E2E_APICURIO_TESTS_PROFILE"
+	extraMavenArgsEnvVar            = "E2E_EXTRA_MAVEN_ARGS"
+	operatorBundlePathEnvVar        = "E2E_OPERATOR_BUNDLE_PATH"
+	strimziOperatorBundlePathEnvVar = "E2E_STRIMZI_BUNDLE_PATH"
 
-	OLMUpgradeChannelEnvVar             = "E2E_OLM_UPGRADE_CHANNEL"
-	OLMUpgradeOldCatalogEnvVar          = "E2E_OLM_UPGRADE_OLD_CATALOG"
-	OLMUpgradeOldCatalogNamespaceEnvVar = "E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE"
-	OLMUpgradeOldCSVEnvVar              = "E2E_OLM_UPGRADE_OLD_CSV"
-	OLMUpgradeNewCSVEnvVar              = "E2E_OLM_UPGRADE_NEW_CSV"
+	oLMCatalogSourceImageEnvVar            = "E2E_OLM_CATALOG_SOURCE_IMAGE"             //mandatory env var for olm tests
+	oLMCatalogSourceNamespaceEnvVar        = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"         //mandatory env var for olm tests
+	oLMApicurioPackageManifestNameEnvVar   = "E2E_OLM_PACKAGE_MANIFEST_NAME"            //mandatory env var for olm tests
+	oLMClusterWideOperatorsNamespaceEnvVar = "E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE" //mandatory env var for olm tests
 
-	ImagePullSecretServerEnvVar   = "E2E_PULL_SECRET_SERVER"
-	ImagePullSecretUserEnvVar     = "E2E_PULL_SECRET_USER"
-	ImagePullSecretPasswordEnvVar = "E2E_PULL_SECRET_PASSWORD"
+	oLMUpgradeChannelEnvVar             = "E2E_OLM_UPGRADE_CHANNEL"
+	oLMUpgradeOldCatalogEnvVar          = "E2E_OLM_UPGRADE_OLD_CATALOG"
+	oLMUpgradeOldCatalogNamespaceEnvVar = "E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE"
+	oLMUpgradeOldCSVEnvVar              = "E2E_OLM_UPGRADE_OLD_CSV"
+	oLMUpgradeNewCSVEnvVar              = "E2E_OLM_UPGRADE_NEW_CSV"
+
+	imagePullSecretServerEnvVar   = "E2E_PULL_SECRET_SERVER"
+	imagePullSecretUserEnvVar     = "E2E_PULL_SECRET_USER"
+	imagePullSecretPasswordEnvVar = "E2E_PULL_SECRET_PASSWORD"
 	ImagePullSecretName           = "apicurio-registry-pull-secret"
 
 	OperatorNamespace      = "apicurio-registry-e2e"
@@ -40,39 +42,42 @@ const (
 )
 
 //SuiteProjectDir value of SuiteProjectDirEnvVar
-var SuiteProjectDir string = os.Getenv(SuiteProjectDirEnvVar)
+var SuiteProjectDir string = os.Getenv(suiteProjectDirEnvVar)
 
 //ExtraMavenArgs value of ExtraMavenArgsEnvVar
-var ExtraMavenArgs string = os.Getenv(ExtraMavenArgsEnvVar)
+var ExtraMavenArgs string = os.Getenv(extraMavenArgsEnvVar)
 
 //OLMCatalogSourceImage value of OLMCatalogSourceImageEnvVar
-var OLMCatalogSourceImage string = os.Getenv(OLMCatalogSourceImageEnvVar)
+var OLMCatalogSourceImage string = os.Getenv(oLMCatalogSourceImageEnvVar)
 
 //OperatorBundlePath value of OperatorBundlePathEnvVar
-var OperatorBundlePath string = os.Getenv(OperatorBundlePathEnvVar)
+var OperatorBundlePath string = os.Getenv(operatorBundlePathEnvVar)
 
 //ApicurioProjectDir value of ApicurioProjectDirEnvVar
-var ApicurioProjectDir string = os.Getenv(ApicurioProjectDirEnvVar)
+var ApicurioProjectDir string = os.Getenv(apicurioProjectDirEnvVar)
 
 //ApicurioTestsProfile value of ApicurioTestsProfileEnvVar
-var ApicurioTestsProfile string = os.Getenv(ApicurioTestsProfileEnvVar)
+var ApicurioTestsProfile string = os.Getenv(apicurioTestsProfileEnvVar)
 
 //StrimziOperatorBundlePath value of StrimziOperatorBundlePathEnvVar
-var StrimziOperatorBundlePath string = os.Getenv(StrimziOperatorBundlePathEnvVar)
+var StrimziOperatorBundlePath string = os.Getenv(strimziOperatorBundlePathEnvVar)
 
 //OLMCatalogSourceNamespace value of OLMCatalogSourceNamespaceEnvVar
-var OLMCatalogSourceNamespace string = os.Getenv(OLMCatalogSourceNamespaceEnvVar)
+var OLMCatalogSourceNamespace string = os.Getenv(oLMCatalogSourceNamespaceEnvVar)
 
 //OLMApicurioPackageManifestName value of OLMApicurioPackageManifestNameEnvVar
-var OLMApicurioPackageManifestName string = os.Getenv(OLMApicurioPackageManifestNameEnvVar)
+var OLMApicurioPackageManifestName string = os.Getenv(oLMApicurioPackageManifestNameEnvVar)
 
-var OLMUpgradeOldCSV string = os.Getenv(OLMUpgradeOldCSVEnvVar)
-var OLMUpgradeNewCSV string = os.Getenv(OLMUpgradeNewCSVEnvVar)
+//OLMClusterWideOperatorsNamespace value of OLMClusterWideOperatorsNamespaceEnvVar
+var OLMClusterWideOperatorsNamespace string = os.Getenv(oLMClusterWideOperatorsNamespaceEnvVar)
 
-var OLMUpgradeChannel string = os.Getenv(OLMUpgradeChannelEnvVar)
-var OLMUpgradeOldCatalog string = os.Getenv(OLMUpgradeOldCatalogEnvVar)
-var OLMUpgradeOldCatalogNamespace string = os.Getenv(OLMUpgradeOldCatalogNamespaceEnvVar)
+var OLMUpgradeOldCSV string = os.Getenv(oLMUpgradeOldCSVEnvVar)
+var OLMUpgradeNewCSV string = os.Getenv(oLMUpgradeNewCSVEnvVar)
 
-var ImagePullSecretServer string = os.Getenv(ImagePullSecretServerEnvVar)
-var ImagePullSecretUser string = os.Getenv(ImagePullSecretUserEnvVar)
-var ImagePullSecretPassword string = os.Getenv(ImagePullSecretPasswordEnvVar)
+var OLMUpgradeChannel string = os.Getenv(oLMUpgradeChannelEnvVar)
+var OLMUpgradeOldCatalog string = os.Getenv(oLMUpgradeOldCatalogEnvVar)
+var OLMUpgradeOldCatalogNamespace string = os.Getenv(oLMUpgradeOldCatalogNamespaceEnvVar)
+
+var ImagePullSecretServer string = os.Getenv(imagePullSecretServerEnvVar)
+var ImagePullSecretUser string = os.Getenv(imagePullSecretUserEnvVar)
+var ImagePullSecretPassword string = os.Getenv(imagePullSecretPasswordEnvVar)
