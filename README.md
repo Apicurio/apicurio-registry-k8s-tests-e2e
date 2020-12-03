@@ -1,3 +1,5 @@
+![Latest results](https://github.com/Apicurio/apicurio-registry-k8s-tests-e2e/workflows/Apicurio%20Registry%20Tests/badge.svg?branch=master)
+
 # Apicurio Registry Kubernetes E2E testsuite
 
 This repository contains a golang testsuite to verify apicurio-registry-operator and apicurio-registry
