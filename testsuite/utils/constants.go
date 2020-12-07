@@ -30,6 +30,8 @@ const (
 	imagePullSecretPasswordEnvVar = "E2E_PULL_SECRET_PASSWORD"
 	ImagePullSecretName           = "apicurio-registry-pull-secret"
 
+	summaryFileEnvVar = "E2E_SUMMARY_FILE"
+
 	OperatorNamespace      = "apicurio-registry-e2e"
 	OperatorDeploymentName = "apicurio-registry-operator"
 	APIPollInterval        = 2 * time.Second
@@ -81,3 +83,6 @@ var OLMUpgradeOldCatalogNamespace string = os.Getenv(oLMUpgradeOldCatalogNamespa
 var ImagePullSecretServer string = os.Getenv(imagePullSecretServerEnvVar)
 var ImagePullSecretUser string = os.Getenv(imagePullSecretUserEnvVar)
 var ImagePullSecretPassword string = os.Getenv(imagePullSecretPasswordEnvVar)
+
+//SummaryFile (optional), file to write tests summary in human readable format, used for CI notification messages
+var SummaryFile string = os.Getenv(summaryFileEnvVar)

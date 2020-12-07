@@ -25,6 +25,8 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/selenium"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
+	customreporters "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite/reporters"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -150,7 +152,11 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().Format("20060102150405")))
 
-	RunSpecsWithDefaultAndCustomReporters(t, suiteName,
-		[]Reporter{printer.NewlineReporter{}, junitReporter},
-	)
+	r := []Reporter{printer.NewlineReporter{}, junitReporter}
+
+	if utils.SummaryFile != "" {
+		r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
+	}
+
+	RunSpecsWithDefaultAndCustomReporters(t, suiteName, r)
 }
