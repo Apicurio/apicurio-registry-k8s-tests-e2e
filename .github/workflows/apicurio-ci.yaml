@@ -12,6 +12,8 @@ jobs:
   tests:
     name: Kubernetes Tests
     runs-on: ubuntu-18.04
+    env:
+      CI_MESSAGE_HEADER: Registry ${{ matrix.test_profile }} Tests
     strategy:
       fail-fast: false
       matrix:
@@ -51,6 +53,5 @@ jobs:
       - name: Send CI message
         if: github.event_name == 'schedule'
         env:
-          CI_MESSAGE_HEADER: Registry scheduled ${{ matrix.test_profile }} Tests
           CI_MESSAGES_ENDPOINT: ${{ secrets.CI_MESSAGES_ENDPOINT }}
         run: make send-ci-message

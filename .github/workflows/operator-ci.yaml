@@ -12,6 +12,8 @@ jobs:
   tests:
     name: Kubernetes Tests
     runs-on: ubuntu-18.04
+    env:
+      CI_MESSAGE_HEADER: Operator Tests
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -33,6 +35,5 @@ jobs:
       - name: Send CI message
         if: github.event_name == 'schedule' || github.event_name == 'push'
         env:
-          CI_MESSAGE_HEADER: Operator scheduled Tests
           CI_MESSAGES_ENDPOINT: ${{ secrets.CI_MESSAGES_ENDPOINT }}
         run: make send-ci-message
