@@ -54,6 +54,7 @@ SUMMARY_FILE=$(E2E_SUITE_PROJECT_DIR)/tests-logs/TESTS_SUMMARY.json
 export E2E_SUMMARY_FILE=$(SUMMARY_FILE)
 create-summary-file:
 	rm $(SUMMARY_FILE) || true
+	mkdir -p $(E2E_SUITE_PROJECT_DIR)/tests-logs
 	cat $(E2E_SUITE_PROJECT_DIR)/scripts/CI_MESSAGE.json | sed -e 's/TEMPLATE/$(CI_MESSAGE_HEADER)/' > $(SUMMARY_FILE)
 
 send-ci-message:
