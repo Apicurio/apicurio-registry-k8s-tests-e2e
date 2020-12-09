@@ -22,6 +22,8 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
+OPERATOR_IMAGE?=docker.io/apicurio/apicurio-registry-operator:latest-dev
+
 # olm variables
 export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
 OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
@@ -62,12 +64,17 @@ send-ci-message:
 
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
 create-catalog-source-image:
+ifeq ($(CI_BUILD),true)
+	cp ./olm-catalog-source/operator-image.replacer.sh ./olm-catalog-source/manifests_replacer.sh
+	sed -i s,OLD_OPERATOR_IMAGE,$(OPERATOR_IMAGE),g ./olm-catalog-source/manifests_replacer.sh
+	sed -i s,NEW_OPERATOR_IMAGE,localhost:5000/apicurio-registry-operator:latest-ci,g ./olm-catalog-source/manifests_replacer.sh
+else
+	cp ./olm-catalog-source/dummy.replacer.sh ./olm-catalog-source/manifests_replacer.sh
+endif
 	docker build -t $(CATALOG_SOURCE_IMAGE) --build-arg MANIFESTS_IMAGE=$(OPERATOR_METADATA_IMAGE) ./olm-catalog-source
 
 kind-catalog-source-img: create-catalog-source-image
 	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
-
-OPERATOR_IMAGE?=docker.io/apicurio/apicurio-registry-operator:latest-dev
 
 kind-load-operator-images:
 	docker tag $(OPERATOR_IMAGE) localhost:5000/apicurio-registry-operator:latest-ci
