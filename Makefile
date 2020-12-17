@@ -41,7 +41,7 @@ export E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE=olm
 #E2E_OLM_CATALOG_SOURCE_IMAGE is used as new catalog
 
 # kafka streams variables
-STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.18.0/strimzi-cluster-operator-0.18.0.yaml
+STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.20.1/strimzi-cluster-operator-0.20.1.yaml
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
 # CI
