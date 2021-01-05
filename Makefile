@@ -19,15 +19,15 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
-BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install.yaml
+BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install-dev.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
-OPERATOR_IMAGE?=docker.io/apicurio/apicurio-registry-operator:latest-dev
+OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:latest-dev
 
 # olm variables
 export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
-OPERATOR_METADATA_IMAGE?=docker.io/apicurio/apicurio-registry-operator-metadata:latest-dev
-CATALOG_SOURCE_IMAGE=docker.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
+OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-metadata:latest-dev
+CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 export E2E_OLM_CATALOG_SOURCE_NAMESPACE=olm
 export E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE=operators
@@ -79,7 +79,7 @@ kind-catalog-source-img: create-catalog-source-image
 kind-load-operator-images:
 	docker tag $(OPERATOR_IMAGE) localhost:5000/apicurio-registry-operator:latest-ci
 	docker push localhost:5000/apicurio-registry-operator:latest-ci
-	sed -i "s#docker.io/apicurio/apicurio-registry-operator.*#localhost:5000/apicurio-registry-operator:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-operator.*#localhost:5000/apicurio-registry-operator:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images) kind-catalog-source-img
 
@@ -88,19 +88,19 @@ APICURIO_IMAGES_TAG?=latest-snapshot
 kind-load-apicurio-images:
 	docker tag apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-mem:latest-ci
 	docker push localhost:5000/apicurio-registry-mem:latest-ci
-	sed -i "s#docker.io/apicurio/apicurio-registry-mem.*\"#localhost:5000/apicurio-registry-mem:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-mem.*\"#localhost:5000/apicurio-registry-mem:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-streams:latest-ci
 	docker push localhost:5000/apicurio-registry-streams:latest-ci
-	sed -i "s#docker.io/apicurio/apicurio-registry-streams.*\"#localhost:5000/apicurio-registry-streams:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-streams.*\"#localhost:5000/apicurio-registry-streams:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-jpa:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-jpa:latest-ci
 	docker push localhost:5000/apicurio-registry-jpa:latest-ci
-	sed -i "s#docker.io/apicurio/apicurio-registry-jpa.*\"#localhost:5000/apicurio-registry-jpa:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-jpa.*\"#localhost:5000/apicurio-registry-jpa:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-infinispan:latest-ci
 	docker push localhost:5000/apicurio-registry-infinispan:latest-ci
-	sed -i "s#docker.io/apicurio/apicurio-registry-infinispan.*\"#localhost:5000/apicurio-registry-infinispan:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-infinispan.*\"#localhost:5000/apicurio-registry-infinispan:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 default-replace-apicurio-images:
 	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
