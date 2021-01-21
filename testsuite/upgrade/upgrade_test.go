@@ -26,7 +26,7 @@ import (
 
 var artifactData string = "{\"type\":\"record\",\"name\":\"price\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
 
-var _ = DescribeTable("olm upgrade",
+var _ = DescribeTable("olm-upgrade",
 	func(ctx *types.TestContext) {
 		defer testcase.SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 		executeUpgradeTest(suiteCtx, ctx)
@@ -132,7 +132,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	Expect(err).ToNot(HaveOccurred())
 
 	//wait for subscription to point to new CSV
-	timeout := 60 * time.Second
+	timeout := 120 * time.Second
 	log.Info("Waiting for subscription to be updated", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		updatedsub, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Get(sub.Name, v1.GetOptions{})
