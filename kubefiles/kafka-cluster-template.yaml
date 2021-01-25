@@ -8,8 +8,12 @@ spec:
     version: 2.5.0
     replicas: {REPLICAS}
     listeners:
-      plain: {}
-      tls: {}
+    #   plain: {}
+    #   tls: {}
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
     config:
       offsets.topic.replication.factor: {REPLICAS}
       transaction.state.log.replication.factor: {REPLICAS}
