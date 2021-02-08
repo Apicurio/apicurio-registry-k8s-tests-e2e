@@ -6,3 +6,4 @@ tests-logs
 apicurio-registry
 apicurio-registry-operator
 converter-distro.tar.gz
+manifests_replacer.sh

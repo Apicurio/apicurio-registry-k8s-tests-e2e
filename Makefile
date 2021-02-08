@@ -116,7 +116,7 @@ endif
 
 setup-apicurio-deps: $(APICURIO_TARGETS)
 	#setup kafka connect converters distro
-	cp $(E2E_APICURIO_PROJECT_DIR)/distro/connect-converter/target/apicurio-kafka-connect-converter-*-converter.tar.gz scripts/converters/converter-distro.tar.gz
+	cp $(E2E_APICURIO_PROJECT_DIR)/distro/connect-converter/target/apicurio-kafka-connect-converter-*.tar.gz scripts/converters/converter-distro.tar.gz
 
 kind-delete:
 	${KIND_CMD} delete cluster --name ${KIND_CLUSTER_NAME}
