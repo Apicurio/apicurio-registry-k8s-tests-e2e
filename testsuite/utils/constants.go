@@ -38,7 +38,7 @@ const (
 	MediumPollInterval     = 5 * time.Second
 	LongPollInterval       = 10 * time.Second
 
-	StorageJpa        = "jpa"
+	StorageSql        = "sql"
 	StorageStreams    = "streams"
 	StorageInfinispan = "infinispan"
 )

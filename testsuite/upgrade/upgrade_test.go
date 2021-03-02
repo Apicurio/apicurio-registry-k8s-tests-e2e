@@ -32,7 +32,7 @@ var _ = DescribeTable("olm-upgrade",
 		executeUpgradeTest(suiteCtx, ctx)
 	},
 
-	// Entry("jpa", &types.TestContext{Storage: utils.StorageJpa}),
+	// Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
 	Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
 )
 

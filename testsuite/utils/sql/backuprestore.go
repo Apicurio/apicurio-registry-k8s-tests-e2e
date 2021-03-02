@@ -1,4 +1,4 @@
-package jpa
+package sql
 
 import (
 	"context"
@@ -40,7 +40,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
-				Persistence: utils.StorageJpa,
+				Persistence: utils.StorageSql,
 				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
 					Url:      string(backupDBData.DataSourceURL),
 					UserName: backupDBData.User,
@@ -117,7 +117,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
-				Persistence: utils.StorageJpa,
+				Persistence: utils.StorageSql,
 				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
 					Url:      string(restoreDBData.DataSourceURL),
 					UserName: restoreDBData.User,

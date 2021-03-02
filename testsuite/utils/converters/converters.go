@@ -25,10 +25,10 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/openshift"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -67,9 +67,9 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
 
-	jpa.DeployPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
+	sql.DeployPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
-		jpa.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName)
+		sql.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName)
 	}
 	testContext.RegisterCleanup(postgresCleanup)
 
@@ -111,7 +111,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		debeziumURL = "http://" + debeziumRoute.Status.Ingress[0].Host
 	}
 
-	postgresqlPodName := jpa.GetPostgresqlDatabasePod(suiteCtx.Clientset, testContext.RegistryNamespace, databaseName).Name
+	postgresqlPodName := sql.GetPostgresqlDatabasePod(suiteCtx.Clientset, testContext.RegistryNamespace, databaseName).Name
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "drop schema if exists todo cascade")
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "create schema todo")
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
@@ -120,10 +120,10 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	var registryInternalURL string = "http://" + testContext.RegistryInternalHost + ":" + testContext.RegistryInternalPort + "/api/"
 	var debeziumTopic string = "dbserver2.todo.todo"
 	extraConfig := map[string]interface{}{
-		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-		"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
-		"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.utils.serde.AvroKafkaSerializer",
-		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.utils.serde.AvroKafkaDeserializer",
+		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.serde.avro.AvroKafkaSerializer",
+		"key.converter.apicurio.registry.converter.deserializer":   "io.apicurio.registry.serde.avro.AvroKafkaDeserializer",
+		"value.converter.apicurio.registry.converter.serializer":   "io.apicurio.registry.serde.avro.AvroKafkaSerializer",
+		"value.converter.apicurio.registry.converter.deserializer": "io.apicurio.registry.serde.avro.AvroKafkaDeserializer",
 	}
 	if suiteCtx.IsOpenshift {
 		// because we are using a different postgres image when running on openshift
@@ -238,14 +238,14 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 			"database.dbname":   databaseName,
 			"connector.class":   "io.debezium.connector.postgresql.PostgresConnector",
 			//test specific
-			"database.server.name":                        "dbserver2",
-			"slot.name":                                   "debezium_2",
-			"key.converter":                               converter,
-			"key.converter.apicurio.registry.url":         apicurioURL,
-			"key.converter.apicurio.registry.global-id":   "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy",
-			"value.converter":                             converter,
-			"value.converter.apicurio.registry.url":       apicurioURL,
-			"value.converter.apicurio.registry.global-id": "io.apicurio.registry.utils.serde.strategy.AutoRegisterIdStrategy",
+			"database.server.name":                            "dbserver2",
+			"slot.name":                                       "debezium_2",
+			"key.converter":                                   converter,
+			"key.converter.apicurio.registry.url":             apicurioURL,
+			"key.converter.apicurio.registry.auto-register":   "true",
+			"value.converter":                                 converter,
+			"value.converter.apicurio.registry.url":           apicurioURL,
+			"value.converter.apicurio.registry.auto-register": "true",
 		},
 	}
 	for k, v := range extraConfig {

@@ -1,4 +1,4 @@
-package jpa
+package sql
 
 import (
 	"context"
@@ -52,7 +52,7 @@ func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
-				Persistence: utils.StorageJpa,
+				Persistence: utils.StorageSql,
 				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
 					Url:      string(dataSourceURL),
 					UserName: user,

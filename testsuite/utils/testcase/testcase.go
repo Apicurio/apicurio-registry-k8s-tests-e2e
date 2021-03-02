@@ -14,9 +14,9 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/infinispan"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/jpa"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -30,10 +30,9 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			executeTestCase(suiteCtx, testContext)
 		},
 
-		//TODO revert all jpa comments when operator supports SQL persistence
-		// Entry("jpa", &types.TestContext{Storage: utils.StorageJpa, RegistryNamespace: namespace}),
+		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace}),
 		Entry("streams", &types.TestContext{Storage: utils.StorageStreams, RegistryNamespace: namespace}),
-		Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
+		// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
 	)
 
 }
@@ -49,9 +48,9 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 				executeTestCase(suiteCtx, testContext)
 			},
 
-			// Entry("jpa", &types.TestContext{Storage: utils.StorageJpa, Replicas: 3}),
+			Entry("sql", &types.TestContext{Storage: utils.StorageSql, Replicas: 3}),
 			Entry("streams", &types.TestContext{Storage: utils.StorageStreams, Replicas: 3, RegistryNamespace: namespace}),
-			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, Replicas: 3, RegistryNamespace: namespace}),
+			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, Replicas: 3, RegistryNamespace: namespace}),
 		)
 	}
 
@@ -61,9 +60,9 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 				executeConvertersTestCase(suiteCtx, testContext)
 			},
 
-			// Entry("postgres", &types.TestContext{Storage: utils.StorageJpa}),
+			Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
 			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
-			Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
+			// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
 		)
 	}
 
@@ -71,17 +70,19 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 	// 	ctx := &types.TestContext{}
 	// 	ctx.RegistryNamespace = utils.OperatorNamespace
 	// 	defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-	// 	jpa.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+	// 	sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
 	// })
 
-	var _ = DescribeTable("streams security",
-		func(testContext *types.TestContext) {
-			executeTestCase(suiteCtx, testContext)
-		},
+	if suiteCtx.OnlyTestOperator {
+		var _ = DescribeTable("streams security",
+			func(testContext *types.TestContext) {
+				executeTestCase(suiteCtx, testContext)
+			},
 
-		Entry("scram", &types.TestContext{Storage: utils.StorageStreams, Security: "scram", RegistryNamespace: namespace}),
-		Entry("tls", &types.TestContext{Storage: utils.StorageStreams, Security: "tls", RegistryNamespace: namespace}),
-	)
+			Entry("scram", &types.TestContext{Storage: utils.StorageStreams, Security: "scram", RegistryNamespace: namespace}),
+			Entry("tls", &types.TestContext{Storage: utils.StorageStreams, Security: "tls", RegistryNamespace: namespace}),
+		)
+	}
 
 }
 
@@ -157,8 +158,8 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 }
 
 func DeployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	if ctx.Storage == utils.StorageJpa {
-		jpa.DeployJpaRegistry(suiteCtx, ctx)
+	if ctx.Storage == utils.StorageSql {
+		sql.DeployJpaRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageStreams {
 		streams.DeployStreamsRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageInfinispan {
@@ -173,8 +174,8 @@ func CleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContex
 
 	SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
 
-	if ctx.Storage == utils.StorageJpa {
-		jpa.RemoveJpaRegistry(suiteCtx, ctx)
+	if ctx.Storage == utils.StorageSql {
+		sql.RemoveJpaRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageStreams {
 		streams.RemoveStreamsRegistry(suiteCtx, ctx)
 	} else if ctx.Storage == utils.StorageInfinispan {

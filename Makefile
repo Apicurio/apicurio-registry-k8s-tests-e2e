@@ -94,9 +94,9 @@ kind-load-apicurio-images:
 	docker push localhost:5000/apicurio-registry-streams:latest-ci
 	sed -i "s#quay.io/apicurio/apicurio-registry-streams.*\"#localhost:5000/apicurio-registry-streams:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
-	docker tag apicurio/apicurio-registry-jpa:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-jpa:latest-ci
-	docker push localhost:5000/apicurio-registry-jpa:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-jpa.*\"#localhost:5000/apicurio-registry-jpa:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	docker tag apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-sql:latest-ci
+	docker push localhost:5000/apicurio-registry-sql:latest-ci
+	sed -i "s#quay.io/apicurio/apicurio-registry-sql.*\"#localhost:5000/apicurio-registry-sql:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-infinispan:latest-ci
 	docker push localhost:5000/apicurio-registry-infinispan:latest-ci
@@ -105,7 +105,7 @@ kind-load-apicurio-images:
 default-replace-apicurio-images:
 	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 	sed -i "s#apicurio/apicurio-registry-streams.*\"#apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-jpa.*\"#apicurio/apicurio-registry-jpa:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-sql.*\"#apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 	sed -i "s#apicurio/apicurio-registry-infinispan.*\"#apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 ifeq ($(CI_BUILD),true)
@@ -169,9 +169,9 @@ run-backupandrestore-test:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="backup" ./testsuite/bundle
 
-run-jpa-tests:
+run-sql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="jpa" ./testsuite/bundle
+		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle -- -only-test-operator
 
 run-streams-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
@@ -181,17 +181,17 @@ run-olm-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator
 
-example-run-jpa-and-streams-tests:
+example-run-sql-and-streams-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="jpa|streams" -dryRun
+		--cover --trace --race --progress -v --focus="sql|streams" -dryRun
 
-example-run-jpa-with-olm-tests:
+example-run-sql-with-olm-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="olm.*jpa" -dryRun
+		--cover --trace --race --progress -v --focus="olm.*sql" -dryRun
 
-example-run-jpa-with-olm-and-upgrade-tests:
+example-run-sql-with-olm-and-upgrade-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="olm.*jpa|upgrade" -dryRun
+		--cover --trace --race --progress -v --focus="olm.*sql|upgrade" -dryRun
 
 clean-tests-logs:
 	rm -rf tests-logs
