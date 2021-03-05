@@ -208,7 +208,7 @@ else
 endif
 
 build-apicurio-registry:
-	cd apicurio-registry; mvn package -DskipTests --no-transfer-progress
+	cd apicurio-registry; mvn package -DskipTests --no-transfer-progress -Dmaven.javadoc.skip=true
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
