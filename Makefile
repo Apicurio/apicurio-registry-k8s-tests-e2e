@@ -208,7 +208,10 @@ else
 endif
 
 build-apicurio-registry:
-	cd apicurio-registry; mvn package -DskipTests --no-transfer-progress -Dmaven.javadoc.skip=true
+	# important parts from here are the connect-converters and the tenant-manager-client
+	# cd apicurio-registry; mvn package -Pmultitenancy -DskipTests --no-transfer-progress -Dmaven.javadoc.skip=true
+	cd apicurio-registry; mvn install -am -Pprod -pl distro/connect-converter -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress
+	cd apicurio-registry; mvn install -am -Pprod -Pmultitenancy -pl 'multitenancy/tenant-manager-client' -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
