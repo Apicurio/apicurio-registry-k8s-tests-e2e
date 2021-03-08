@@ -117,7 +117,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "create table todo.Todo (id int8 not null, title varchar(255), primary key (id))")
 	executeSQL(testContext.RegistryNamespace, postgresqlPodName, "alter table todo.Todo replica identity full")
 
-	var registryInternalURL string = "http://" + testContext.RegistryInternalHost + ":" + testContext.RegistryInternalPort + "/api/"
+	var registryInternalURL string = "http://" + testContext.RegistryInternalHost + ":" + testContext.RegistryInternalPort + "/apis/registry/v2/"
 	var debeziumTopic string = "dbserver2.todo.todo"
 	extraConfig := map[string]interface{}{
 		"key.converter.apicurio.registry.converter.serializer":     "io.apicurio.registry.serde.avro.AvroKafkaSerializer",
