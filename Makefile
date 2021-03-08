@@ -26,6 +26,7 @@ OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:latest-dev
 
 # olm variables
 export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
+export E2E_OLM_CHANNEL=apicurio-registry-2.x
 OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-metadata:latest-dev
 CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)

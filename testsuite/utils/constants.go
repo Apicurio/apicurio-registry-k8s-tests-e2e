@@ -17,6 +17,7 @@ const (
 	oLMCatalogSourceImageEnvVar            = "E2E_OLM_CATALOG_SOURCE_IMAGE"             //mandatory env var for olm tests
 	oLMCatalogSourceNamespaceEnvVar        = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"         //mandatory env var for olm tests
 	oLMApicurioPackageManifestNameEnvVar   = "E2E_OLM_PACKAGE_MANIFEST_NAME"            //mandatory env var for olm tests
+	oLMApicurioChannelNameEnvVar           = "E2E_OLM_CHANNEL"                          //mandatory env var for olm tests
 	oLMClusterWideOperatorsNamespaceEnvVar = "E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE" //mandatory env var for olm tests
 
 	oLMUpgradeChannelEnvVar             = "E2E_OLM_UPGRADE_CHANNEL"
@@ -69,6 +70,9 @@ var OLMCatalogSourceNamespace string = os.Getenv(oLMCatalogSourceNamespaceEnvVar
 
 //OLMApicurioPackageManifestName value of OLMApicurioPackageManifestNameEnvVar
 var OLMApicurioPackageManifestName string = os.Getenv(oLMApicurioPackageManifestNameEnvVar)
+
+//OLMApicurioChannelName value of oLMApicurioChannelNameEnvVar
+var OLMApicurioChannelName string = os.Getenv(oLMApicurioChannelNameEnvVar)
 
 //OLMClusterWideOperatorsNamespace value of OLMClusterWideOperatorsNamespaceEnvVar
 var OLMClusterWideOperatorsNamespace string = os.Getenv(oLMClusterWideOperatorsNamespaceEnvVar)
