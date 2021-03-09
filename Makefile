@@ -148,7 +148,7 @@ run-operator-tests:
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
+		--cover --trace --race --progress -v ./testsuite/bundle
 
 run-upgrade-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
