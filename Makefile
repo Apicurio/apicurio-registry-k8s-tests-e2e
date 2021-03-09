@@ -22,13 +22,13 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install-dev.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
-OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:latest-dev
+OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
 
 # olm variables
 export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
 export E2E_OLM_CHANNEL=apicurio-registry-2.x
-OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-metadata:latest-dev
-CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:latest-dev
+OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-metadata:1.0.0-dev
+CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:1.0.0-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 export E2E_OLM_CATALOG_SOURCE_NAMESPACE=olm
 export E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE=operators
