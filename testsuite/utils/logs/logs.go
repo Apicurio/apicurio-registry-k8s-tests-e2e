@@ -30,16 +30,9 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 	os.MkdirAll(logsDir, os.ModePerm)
 
 	//first we collect all pods statuses and cluster events
-	currentPodsFile, err := os.Create(logsDir + "pods.log")
-	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace)
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace, "-o", "yaml")
-	defer currentPodsFile.Close()
-
-	eventsFile, err := os.Create(logsDir + "events.log")
-	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", namespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
-	defer eventsFile.Close()
+	createPodsLogFile(logsDir, namespace)
+	createEventsLogFile(logsDir, namespace)
+	createNodesLogFile(logsDir)
 
 	operatorDeployment, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
@@ -92,16 +85,9 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 	os.MkdirAll(logsDir, os.ModePerm)
 
 	//first we collect all pods statuses and cluster events
-	currentPodsFile, err := os.Create(logsDir + "pods.log")
-	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace)
-	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace, "-o", "yaml")
-	defer currentPodsFile.Close()
-
-	eventsFile, err := os.Create(logsDir + "events.log")
-	Expect(err).ToNot(HaveOccurred())
-	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", namespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
-	defer eventsFile.Close()
+	createPodsLogFile(logsDir, namespace)
+	createEventsLogFile(logsDir, namespace)
+	createNodesLogFile(logsDir)
 
 	//then collect logs for each running pod
 	for _, pod := range pods.Items {
@@ -113,6 +99,28 @@ func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 			saveContainerLogs(clientset, logsDir, container.Name, pod)
 		}
 	}
+}
+
+func createPodsLogFile(logsDir string, namespace string) {
+	currentPodsFile, err := os.Create(logsDir + "pods.log")
+	Expect(err).ToNot(HaveOccurred())
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace)
+	kubernetescli.RedirectOutput(currentPodsFile, os.Stderr, "get", "pods", "-n", namespace, "-o", "yaml")
+	defer currentPodsFile.Close()
+}
+
+func createEventsLogFile(logsDir string, namespace string) {
+	eventsFile, err := os.Create(logsDir + "events.log")
+	Expect(err).ToNot(HaveOccurred())
+	kubernetescli.RedirectOutput(eventsFile, os.Stderr, "get", "events", "-n", namespace, "--sort-by=\"{.metadata.creationTimestamp}\"")
+	defer eventsFile.Close()
+}
+
+func createNodesLogFile(logsDir string) {
+	nodesFile, err := os.Create(logsDir + "nodes.log")
+	Expect(err).ToNot(HaveOccurred())
+	kubernetescli.RedirectOutput(nodesFile, os.Stderr, "describe", "nodes")
+	defer nodesFile.Close()
 }
 
 func saveContainerLogs(clientset *kubernetes.Clientset, logsDir string, container string, pod v1.Pod) {
