@@ -1,4 +1,5 @@
 KIND_CLUSTER_NAME ?= "apicurio-cluster"
+KIND_CLUSTER_CONFIG ?= kind-config.yaml
 
 ifeq (1, $(shell command -v kind | wc -l))
 KIND_CMD = kind
@@ -130,7 +131,7 @@ else
 	@echo "Creating Cluster"
 	./scripts/start-kind-image-registry.sh
 	# create a cluster with the local registry enabled in containerd
-	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.17.5 --config=./scripts/kind-config.yaml
+	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.17.5 --config=./scripts/${KIND_CLUSTER_CONFIG}
 	./scripts/setup-kind-image-registry.sh
 	# setup ingress
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
@@ -148,7 +149,7 @@ run-operator-tests:
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle
+		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
 
 run-upgrade-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
@@ -160,7 +161,7 @@ run-security-tests:
 
 run-clustered-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="clustered" ./testsuite/bundle -- -only-test-operator
+		--cover --trace --race --progress -v --focus="clustered" ./testsuite/bundle
 
 run-converters-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
