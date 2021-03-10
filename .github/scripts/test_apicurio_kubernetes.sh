@@ -10,7 +10,15 @@ then
     E2E_APICURIO_TESTS_PROFILE=smoke
     make run-upgrade-ci
 else
-    make run-apicurio-ci
+    if [ "$E2E_APICURIO_TESTS_PROFILE" == "clustered"]
+    then
+        E2E_APICURIO_TESTS_PROFILE=acceptance
+        KIND_CLUSTER_CONFIG=kind-config-big-cluster.yaml
+        make run-apicurio-base-ci
+        make run-clustered-tests
+    else
+        make run-apicurio-ci
+    fi
 fi
 
 set +e +a 

@@ -49,7 +49,9 @@ export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 # CI
 run-operator-ci: create-summary-file kind-start kind-setup-olm pull-operator-repo setup-operator-deps run-operator-tests
 
-run-apicurio-ci: create-summary-file kind-start pull-operator-repo setup-apicurio-deps run-apicurio-tests
+run-apicurio-base-ci: create-summary-file kind-start pull-operator-repo setup-apicurio-deps
+
+run-apicurio-ci: run-apicurio-base-ci run-apicurio-tests
 
 run-upgrade-ci: create-summary-file kind-start kind-setup-olm pull-operator-repo kind-catalog-source-img run-upgrade-tests
 
