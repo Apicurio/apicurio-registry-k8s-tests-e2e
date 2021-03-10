@@ -11,7 +11,7 @@ on:
 jobs:
   tests:
     name: Kubernetes Tests
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
       CI_MESSAGE_HEADER: Registry ${{ matrix.test_profile }} Tests
     strategy:
