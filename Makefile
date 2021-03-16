@@ -153,6 +153,10 @@ run-apicurio-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
 
+run-apicurio-tests-with-clustered-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v ./testsuite/bundle
+
 run-upgrade-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/upgrade
