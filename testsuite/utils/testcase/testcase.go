@@ -32,7 +32,7 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 
 		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace}),
 		Entry("streams", &types.TestContext{Storage: utils.StorageStreams, RegistryNamespace: namespace}),
-		// Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
+		Entry("infinispan", &types.TestContext{Storage: utils.StorageInfinispan, RegistryNamespace: namespace}),
 	)
 
 }
