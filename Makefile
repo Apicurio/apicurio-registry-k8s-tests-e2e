@@ -42,7 +42,7 @@ export E2E_OLM_UPGRADE_OLD_CATALOG=operatorhubio-catalog
 export E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE=olm
 #E2E_OLM_CATALOG_SOURCE_IMAGE is used as new catalog
 
-# kafka streams variables
+# kafka storage variables
 STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.20.1/strimzi-cluster-operator-0.20.1.yaml
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
@@ -94,23 +94,18 @@ kind-load-apicurio-images:
 	docker push localhost:5000/apicurio-registry-mem:latest-ci
 	sed -i "s#quay.io/apicurio/apicurio-registry-mem.*\"#localhost:5000/apicurio-registry-mem:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
-	docker tag apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-streams:latest-ci
-	docker push localhost:5000/apicurio-registry-streams:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-streams.*\"#localhost:5000/apicurio-registry-streams:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	docker tag apicurio/apicurio-registry-kafkasql:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-kafkasql:latest-ci
+	docker push localhost:5000/apicurio-registry-kafkasql:latest-ci
+	sed -i "s#quay.io/apicurio/apicurio-registry-kafkasql.*\"#localhost:5000/apicurio-registry-kafkasql:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-sql:latest-ci
 	docker push localhost:5000/apicurio-registry-sql:latest-ci
 	sed -i "s#quay.io/apicurio/apicurio-registry-sql.*\"#localhost:5000/apicurio-registry-sql:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
-	docker tag apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-infinispan:latest-ci
-	docker push localhost:5000/apicurio-registry-infinispan:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-infinispan.*\"#localhost:5000/apicurio-registry-infinispan:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-
 default-replace-apicurio-images:
 	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-streams.*\"#apicurio/apicurio-registry-streams:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-kafkasql.*\"#apicurio/apicurio-registry-kafkasql:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 	sed -i "s#apicurio/apicurio-registry-sql.*\"#apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-infinispan.*\"#apicurio/apicurio-registry-infinispan:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 ifeq ($(CI_BUILD),true)
 APICURIO_TARGETS = kind-load-apicurio-images
@@ -181,17 +176,17 @@ run-sql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle -- -only-test-operator
 
-run-streams-tests:
+run-kafkasql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="streams" ./testsuite/bundle
+		--cover --trace --race --progress -v --focus="kafkasql" ./testsuite/bundle
 
 run-olm-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator
 
-example-run-sql-and-streams-tests:
+example-run-sql-and-kafkasql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="sql|streams" -dryRun
+		--cover --trace --race --progress -v --focus="sql|kafkasql" -dryRun
 
 example-run-sql-with-olm-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \

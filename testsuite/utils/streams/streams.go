@@ -60,7 +60,7 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
-				Persistence: utils.StorageStreams,
+				Persistence: utils.StorageKafkaSql,
 				Streams: apicurio.ApicurioRegistrySpecConfigurationStreams{
 					ApplicationId:    "registry-application-id",
 					BootstrapServers: bootstrapServers,

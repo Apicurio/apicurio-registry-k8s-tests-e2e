@@ -31,8 +31,8 @@ var log = logf.Log.WithName("postgresql")
 
 const registryPostgresqlName string = "registry-db"
 
-//DeployJpaRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
-func DeployJpaRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+//DeploySqlRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
+func DeploySqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	user := "apicuriouser"
 	password := "password"

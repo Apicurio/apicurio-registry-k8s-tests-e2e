@@ -33,7 +33,7 @@ var _ = DescribeTable("olm-upgrade",
 	},
 
 	// Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
-	Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
+	// Entry("streams", &types.TestContext{Storage: utils.StorageStreams}),
 )
 
 func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {

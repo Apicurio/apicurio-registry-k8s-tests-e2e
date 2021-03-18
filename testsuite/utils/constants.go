@@ -39,9 +39,8 @@ const (
 	MediumPollInterval     = 5 * time.Second
 	LongPollInterval       = 10 * time.Second
 
-	StorageSql        = "sql"
-	StorageStreams    = "streams"
-	StorageInfinispan = "infinispan"
+	StorageSql      = "sql"
+	StorageKafkaSql = "kafkasql"
 )
 
 //SuiteProjectDir value of SuiteProjectDirEnvVar
