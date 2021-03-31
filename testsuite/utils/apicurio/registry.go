@@ -133,29 +133,29 @@ func WaitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, regist
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
-		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-			if err != nil && !errors.IsNotFound(err) {
-				return false, err
-			}
-			if len(deployments.Items) != 0 {
-				registryDeployment := deployments.Items[0]
-				if registryDeployment.Status.AvailableReplicas == registryReplicas {
-					return true, nil
-				}
-			}
-		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-			if err != nil && !errors.IsNotFound(err) {
-				return false, err
-			}
-			if len(deployments.Items) != 0 {
-				registryDeployment := deployments.Items[0]
-				if registryDeployment.Status.AvailableReplicas == registryReplicas {
-					return true, nil
-				}
+		// if suiteCtx.IsOpenshift {
+		// 	deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		// 	if err != nil && !errors.IsNotFound(err) {
+		// 		return false, err
+		// 	}
+		// 	if len(deployments.Items) != 0 {
+		// 		registryDeployment := deployments.Items[0]
+		// 		if registryDeployment.Status.AvailableReplicas == registryReplicas {
+		// 			return true, nil
+		// 		}
+		// 	}
+		// } else {
+		deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		if err != nil && !errors.IsNotFound(err) {
+			return false, err
+		}
+		if len(deployments.Items) != 0 {
+			registryDeployment := deployments.Items[0]
+			if registryDeployment.Status.AvailableReplicas == registryReplicas {
+				return true, nil
 			}
 		}
+		// }
 		return false, nil
 	})
 	kubernetescli.GetPods(namespace)
@@ -204,29 +204,29 @@ func waitRegistryDeploymentDeleted(suiteCtx *types.SuiteContext, namespace strin
 	return wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
-		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return true, nil
-				}
-				return false, err
-			}
-			if len(deployments.Items) == 0 {
+		// if suiteCtx.IsOpenshift {
+		// 	deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		// 	if err != nil {
+		// 		if errors.IsNotFound(err) {
+		// 			return true, nil
+		// 		}
+		// 		return false, err
+		// 	}
+		// 	if len(deployments.Items) == 0 {
+		// 		return true, nil
+		// 	}
+		// } else {
+		deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		if err != nil {
+			if errors.IsNotFound(err) {
 				return true, nil
 			}
-		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return true, nil
-				}
-				return false, err
-			}
-			if len(deployments.Items) == 0 {
-				return true, nil
-			}
+			return false, err
 		}
+		if len(deployments.Items) == 0 {
+			return true, nil
+		}
+		// }
 		return false, nil
 	})
 }

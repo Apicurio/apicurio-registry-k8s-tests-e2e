@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
-	ocp_apps_client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
@@ -114,7 +113,6 @@ func InitSuite(suiteCtx *types.SuiteContext) {
 
 	if suiteCtx.IsOpenshift {
 		log.Info("Openshift cluster detected")
-		suiteCtx.OcpAppsClient = ocp_apps_client.NewForConfigOrDie(suiteCtx.Cfg)
 		suiteCtx.OcpRouteClient = ocp_route_client.NewForConfigOrDie(suiteCtx.Cfg)
 	}
 
