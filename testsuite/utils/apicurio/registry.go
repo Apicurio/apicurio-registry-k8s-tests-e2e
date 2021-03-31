@@ -19,7 +19,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
-	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
 var log = logf.Log.WithName("apicurio")

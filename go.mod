@@ -3,7 +3,7 @@ module github.com/Apicurio/apicurio-registry-k8s-tests-e2e
 go 1.15
 
 require (
-	github.com/Apicurio/apicurio-registry-operator v0.0.0-20210324135832-ff3821a41323
+	github.com/Apicurio/apicurio-registry-operator v0.0.0-20210331124225-696a9913430f
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
 	github.com/openshift/api v0.0.0-20210317213936-dcbf045ae1b8

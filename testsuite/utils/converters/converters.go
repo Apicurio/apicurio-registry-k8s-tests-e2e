@@ -25,11 +25,11 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/openshift"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
@@ -58,11 +58,11 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo *types.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
+	var kafkaClusterInfo *types.KafkaClusterInfo = kafkasql.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
-			streams.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
-			streams.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
+			kafkasql.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
+			kafkasql.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
 		}
 		testContext.RegisterCleanup(kafkaCleanup)
 	}

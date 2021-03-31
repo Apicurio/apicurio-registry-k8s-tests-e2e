@@ -1,4 +1,4 @@
-package streams
+package kafkasql
 
 import (
 	"context"
@@ -22,15 +22,15 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
-	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
-var log = logf.Log.WithName("streams")
+var log = logf.Log.WithName("kafkasql")
 
 var bundlePath string = utils.StrimziOperatorBundlePath
 
-//DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
-func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+//DeployKafkaSqlRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
+func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	kafkaRequest := &CreateKafkaClusterRequest{
 		Name:           "registry-kafka",
@@ -62,8 +62,7 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageKafkaSql,
-				Streams: apicurio.ApicurioRegistrySpecConfigurationStreams{
-					ApplicationId:    "registry-application-id",
+				Kafkasql: apicurio.ApicurioRegistrySpecConfigurationKafkasql{
 					BootstrapServers: bootstrapServers,
 				},
 			},
@@ -91,8 +90,8 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Cmd: []string{scriptFile},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		registry.Spec.Configuration.Streams.Security.Tls.KeystoreSecretName = keystoreSecret
-		registry.Spec.Configuration.Streams.Security.Tls.TruststoreSecretName = truststoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Tls.KeystoreSecretName = keystoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Tls.TruststoreSecretName = truststoreSecret
 
 		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
 
@@ -110,9 +109,9 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Cmd: []string{scriptFile},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		registry.Spec.Configuration.Streams.Security.Scram.TruststoreSecretName = truststoreSecret
-		registry.Spec.Configuration.Streams.Security.Scram.PasswordSecretName = kafkaClusterInfo.Username
-		registry.Spec.Configuration.Streams.Security.Scram.User = kafkaClusterInfo.Username
+		registry.Spec.Configuration.Kafkasql.Security.Scram.TruststoreSecretName = truststoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Scram.PasswordSecretName = kafkaClusterInfo.Username
+		registry.Spec.Configuration.Kafkasql.Security.Scram.User = kafkaClusterInfo.Username
 
 		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
 
@@ -122,8 +121,8 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 
 }
 
-//RemoveStreamsRegistry uninstalls registry CR, kafka cluster and strimzi operator
-func RemoveStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+//RemoveKafkaSqlRegistry uninstalls registry CR, kafka cluster and strimzi operator
+func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	defer os.Remove(bundlePath)
 

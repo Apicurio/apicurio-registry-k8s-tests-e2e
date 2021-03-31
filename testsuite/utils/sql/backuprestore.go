@@ -19,7 +19,7 @@ import (
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
-	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
 var artifactData string = "{\"type\":\"record\",\"name\":\"price\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
@@ -41,10 +41,12 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageSql,
-				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
-					Url:      string(backupDBData.DataSourceURL),
-					UserName: backupDBData.User,
-					Password: backupDBData.Password,
+				Sql: apicurio.ApicurioRegistrySpecConfigurationSql{
+					DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
+						Url:      string(backupDBData.DataSourceURL),
+						UserName: backupDBData.User,
+						Password: backupDBData.Password,
+					},
 				},
 			},
 		},
@@ -118,10 +120,12 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageSql,
-				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
-					Url:      string(restoreDBData.DataSourceURL),
-					UserName: restoreDBData.User,
-					Password: restoreDBData.Password,
+				Sql: apicurio.ApicurioRegistrySpecConfigurationSql{
+					DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
+						Url:      string(restoreDBData.DataSourceURL),
+						UserName: restoreDBData.User,
+						Password: restoreDBData.Password,
+					},
 				},
 			},
 		},

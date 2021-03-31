@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
 var log = logf.Log.WithName("postgresql")
@@ -53,10 +53,12 @@ func DeploySqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageSql,
-				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
-					Url:      string(dataSourceURL),
-					UserName: user,
-					Password: password,
+				Sql: apicurio.ApicurioRegistrySpecConfigurationSql{
+					DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
+						Url:      string(dataSourceURL),
+						UserName: user,
+						Password: password,
+					},
 				},
 			},
 			Deployment: apicurio.ApicurioRegistrySpecDeployment{
