@@ -25,12 +25,10 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/selenium"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
-	customreporters "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite/reporters"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	apicurioScheme "github.com/Apicurio/apicurio-registry-operator/pkg/apis"
+	apicurioScheme "github.com/Apicurio/apicurio-registry-operator/api/v2"
 	olmapiversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 	pmversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/client/clientset/versioned"
 )
@@ -70,7 +68,7 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 
 //InitSuite performs common logic for Ginkgo's BeforeSuite
 func InitSuite(suiteCtx *types.SuiteContext) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
 
@@ -154,9 +152,9 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	r := []Reporter{printer.NewlineReporter{}, junitReporter}
 
-	if utils.SummaryFile != "" {
-		r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
-	}
+	// if utils.SummaryFile != "" {
+	// 	r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
+	// }
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName, r)
 }

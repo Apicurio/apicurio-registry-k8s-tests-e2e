@@ -20,7 +20,7 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
-BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install-dev.yaml
+BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/default-install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
@@ -141,7 +141,8 @@ kind-setup-olm:
 # we run olm tests only for operator testsuite
 run-operator-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator -disable-clustered-tests
+		--cover --trace --race --progress -v ./testsuite/bundle -- -only-test-operator -disable-clustered-tests
+		# ./testsuite/olm 
 
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:

@@ -19,7 +19,7 @@ import (
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
-	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
 )
 
 var artifactData string = "{\"type\":\"record\",\"name\":\"price\",\"namespace\":\"com.example\",\"fields\":[{\"name\":\"symbol\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"string\"}]}"
@@ -83,11 +83,11 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, ctx.RegistryNamespace, "dbplayground", 1)
 	time.Sleep(2 * time.Second)
 	labelsSet := labels.Set(dbplaygroundlabels)
-	podList, err := suiteCtx.Clientset.CoreV1().Pods(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	podList, err := suiteCtx.Clientset.CoreV1().Pods(ctx.RegistryNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
 	dbplaygroundPodName := podList.Items[0].Name
 	ctx.RegisterCleanup(func() {
-		suiteCtx.Clientset.AppsV1().Deployments(ctx.RegistryNamespace).Delete("dbplayground", &metav1.DeleteOptions{})
+		suiteCtx.Clientset.AppsV1().Deployments(ctx.RegistryNamespace).Delete(context.TODO(), "dbplayground", metav1.DeleteOptions{})
 	})
 
 	// create the backup

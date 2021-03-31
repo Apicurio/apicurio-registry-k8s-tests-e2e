@@ -79,7 +79,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService(testContext.RegistryNamespace))
 	Expect(err).ToNot(HaveOccurred())
 	if suiteCtx.IsOpenshift {
-		_, err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Create(ocpDebeziumRoute(testContext.RegistryNamespace))
+		_, err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Create(context.TODO(), ocpDebeziumRoute(testContext.RegistryNamespace), metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
 		err = suiteCtx.K8sClient.Create(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
@@ -93,7 +93,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService(testContext.RegistryNamespace))
 		Expect(err).ToNot(HaveOccurred())
 		if suiteCtx.IsOpenshift {
-			err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Delete(debeziumName, &metav1.DeleteOptions{})
+			err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Delete(context.TODO(), debeziumName, metav1.DeleteOptions{})
 			Expect(err).ToNot(HaveOccurred())
 		} else {
 			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
@@ -106,7 +106,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	debeziumURL := "http://localhost:80/debezium"
 	if suiteCtx.IsOpenshift {
-		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(debeziumName, metav1.GetOptions{})
+		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(context.TODO(), debeziumName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		debeziumURL = "http://" + debeziumRoute.Status.Ingress[0].Host
 	}

@@ -19,7 +19,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
-	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v2"
 )
 
 var log = logf.Log.WithName("apicurio")
@@ -60,7 +60,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 		timeout := 90 * time.Second
 		log.Info("Waiting for registry route to be ready", "timeout", timeout)
 		err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-			routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -73,7 +73,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 		})
 		kubernetescli.Execute("get", "route", "-n", ctx.RegistryNamespace)
 		Expect(err).ToNot(HaveOccurred())
-		routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		routes, err := suiteCtx.OcpRouteClient.Routes(ctx.RegistryNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(routes.Items)).To(BeIdenticalTo(1))
 		Expect(len(routes.Items[0].Status.Ingress)).ToNot(BeIdenticalTo(0))
@@ -86,7 +86,7 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 	kubernetescli.Execute("get", "svc", "-n", ctx.RegistryNamespace)
 
 	//TODO fix this, operator usability problem, service name should be consistent
-	svcs, err := suiteCtx.Clientset.CoreV1().Services(ctx.RegistryNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	svcs, err := suiteCtx.Clientset.CoreV1().Services(ctx.RegistryNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(svcs.Items)).To(BeIdenticalTo(1))
 	reg := svcs.Items[0]
@@ -134,7 +134,7 @@ func WaitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, regist
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
 		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -145,7 +145,7 @@ func WaitForRegistryReady(suiteCtx *types.SuiteContext, namespace string, regist
 				}
 			}
 		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil && !errors.IsNotFound(err) {
 				return false, err
 			}
@@ -205,7 +205,7 @@ func waitRegistryDeploymentDeleted(suiteCtx *types.SuiteContext, namespace strin
 		labelsSet := labels.Set(map[string]string{"app": registryName})
 
 		if suiteCtx.IsOpenshift {
-			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.OcpAppsClient.DeploymentConfigs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return true, nil
@@ -216,7 +216,7 @@ func waitRegistryDeploymentDeleted(suiteCtx *types.SuiteContext, namespace strin
 				return true, nil
 			}
 		} else {
-			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+			deployments, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return true, nil

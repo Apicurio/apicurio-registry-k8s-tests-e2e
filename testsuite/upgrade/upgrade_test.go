@@ -1,6 +1,7 @@
 package olm
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -8,7 +9,7 @@ import (
 
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
-	"github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -122,10 +123,10 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	//update subscription to point new catalog, do not change csv nor channel, new catalog will trigger that update
 	log.Info("Updating operator subscription", "catalog", catalogSourceName)
-	oldsub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Get(sub.Name, v1.GetOptions{})
+	oldsub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Get(context.TODO(), sub.Name, v1.GetOptions{})
 	oldsub.Spec.CatalogSource = catalogSourceName
 	oldsub.Spec.CatalogSourceNamespace = operatorNamespace
-	updatedsub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Update(oldsub)
+	updatedsub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(operatorNamespace).Update(context.TODO(), oldsub, v1.UpdateOptions{})
 	if err != nil {
 		kubernetescli.GetPods(operatorNamespace)
 	}
@@ -135,7 +136,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	timeout := 120 * time.Second
 	log.Info("Waiting for subscription to be updated", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		updatedsub, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Get(sub.Name, v1.GetOptions{})
+		updatedsub, err = suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Get(context.TODO(), sub.Name, v1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -157,7 +158,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	log.Info("Waiting for new csv to be created and ready", "timeout", timeout)
 	lastPhase := ""
 	err = wait.Poll(utils.MediumPollInterval, timeout, func() (bool, error) {
-		newcsv, err := suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(sub.Namespace).Get(upgradeCSV, v1.GetOptions{})
+		newcsv, err := suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(sub.Namespace).Get(context.TODO(), upgradeCSV, v1.GetOptions{})
 		if err != nil {
 			if kubeerrors.IsNotFound(err) {
 				return false, nil

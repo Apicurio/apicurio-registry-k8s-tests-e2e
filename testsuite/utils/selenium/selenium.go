@@ -54,7 +54,7 @@ func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 	Expect(err).ToNot(HaveOccurred())
 
 	if suiteCtx.IsOpenshift {
-		_, err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Create(ocpSeleniumRoute(seleniumNamespace))
+		_, err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Create(context.TODO(), ocpSeleniumRoute(seleniumNamespace), metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
 		kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 150*time.Second, "ingress-nginx", "ingress-nginx-controller", 1)
@@ -66,7 +66,7 @@ func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 180*time.Second, seleniumNamespace, seleniumName, 1)
 
 	if suiteCtx.IsOpenshift {
-		seleniumRoute, err := suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Get(seleniumName, metav1.GetOptions{})
+		seleniumRoute, err := suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Get(context.TODO(), seleniumName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		suiteCtx.SeleniumHost = seleniumRoute.Status.Ingress[0].Host
 		suiteCtx.SeleniumPort = "80"
@@ -83,7 +83,7 @@ func removeSeleniumChrome(suiteCtx *types.SuiteContext) {
 	err = suiteCtx.K8sClient.Delete(context.TODO(), seleniumService(seleniumNamespace))
 	Expect(err).ToNot(HaveOccurred())
 	if suiteCtx.IsOpenshift {
-		err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Delete(seleniumName, &metav1.DeleteOptions{})
+		err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Delete(context.TODO(), seleniumName, metav1.DeleteOptions{})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
 		err = suiteCtx.K8sClient.Delete(context.TODO(), seleniumIngress(seleniumNamespace))
