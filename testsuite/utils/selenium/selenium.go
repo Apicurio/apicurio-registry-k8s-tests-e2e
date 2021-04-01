@@ -183,6 +183,7 @@ func seleniumIngress(namespace string) *networking.Ingress {
 						HTTP: &networking.HTTPIngressRuleValue{
 							Paths: []networking.HTTPIngressPath{
 								{
+									Path:     "/",
 									PathType: &pathTypePrefix,
 									Backend: networking.IngressBackend{
 										Service: &networking.IngressServiceBackend{
