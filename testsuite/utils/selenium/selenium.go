@@ -9,7 +9,7 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -167,24 +167,30 @@ func seleniumService(namespace string) *corev1.Service {
 	}
 }
 
-func seleniumIngress(namespace string) *v1beta1.Ingress {
-	return &v1beta1.Ingress{
+func seleniumIngress(namespace string) *networking.Ingress {
+	pathTypePrefix := networking.PathTypePrefix
+	return &networking.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      seleniumName,
 			Namespace: namespace,
 		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
+		Spec: networking.IngressSpec{
+			Rules: []networking.IngressRule{
 				{
 					Host: "selenium-chrome.127.0.0.1.nip.io",
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
+					IngressRuleValue: networking.IngressRuleValue{
+						HTTP: &networking.HTTPIngressRuleValue{
+							Paths: []networking.HTTPIngressPath{
 								{
-									Backend: v1beta1.IngressBackend{
-										ServiceName: seleniumName,
-										ServicePort: intstr.FromInt(4444),
+									PathType: &pathTypePrefix,
+									Backend: networking.IngressBackend{
+										Service: &networking.IngressServiceBackend{
+											Name: seleniumName,
+											Port: networking.ServiceBackendPort{
+												Number: 4444,
+											},
+										},
 									},
 								},
 							},

@@ -69,7 +69,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 	})
 
 	if suiteCtx.OnlyTestOperator {
-		var _ = DescribeTable("kafkasql security",
+		var _ = DescribeTable("security",
 			func(testContext *types.TestContext) {
 				executeTestCase(suiteCtx, testContext)
 			},
