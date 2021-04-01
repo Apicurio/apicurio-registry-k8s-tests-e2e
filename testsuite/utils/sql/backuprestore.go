@@ -75,7 +75,7 @@ func ExecuteBackupAndRestoreTestCase(suiteCtx *types.SuiteContext, ctx *types.Te
 	// deploy a dummypod to create the backup and store it, and then restore the backup from that pod
 	log.Info("Deploying dbplayground")
 
-	dbplaygroundImage := "quay.io/rh_integration/service-registry-dbplayground:pg10"
+	dbplaygroundImage := "quay.io/rh_integration/service-registry-dbplayground:pg12"
 	kubernetescli.Execute("create", "serviceaccount", "dbplayground", "-n", ctx.RegistryNamespace)
 	if suiteCtx.IsOpenshift {
 		kubernetescli.Execute("adm", "policy", "add-scc-to-user", "privileged", "system:serviceaccount:"+ctx.RegistryNamespace+":dbplayground", "-n", ctx.RegistryNamespace)

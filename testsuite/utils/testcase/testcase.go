@@ -61,14 +61,14 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 		)
 	}
 
-	var _ = It("backup and restore", func() {
-		ctx := &types.TestContext{}
-		ctx.RegistryNamespace = utils.OperatorNamespace
-		defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-		sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
-	})
-
 	if suiteCtx.OnlyTestOperator {
+		var _ = It("backup and restore", func() {
+			ctx := &types.TestContext{}
+			ctx.RegistryNamespace = utils.OperatorNamespace
+			defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+			sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+		})
+
 		var _ = DescribeTable("security",
 			func(testContext *types.TestContext) {
 				executeTestCase(suiteCtx, testContext)
