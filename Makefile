@@ -223,3 +223,4 @@ ifeq (,$(wildcard ./apicurio-registry-operator))
 else
 	cd apicurio-registry-operator; git pull
 endif
+	cd apicurio-registry-operator; make dist
