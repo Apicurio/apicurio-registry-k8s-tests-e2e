@@ -1,6 +1,8 @@
 package openshift
 
 import (
+	"context"
+
 	. "github.com/onsi/gomega"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -9,7 +11,7 @@ import (
 )
 
 func OcpInternalImage(ctx *types.SuiteContext, namespace string, imageName string, tag string) *types.OcpImageReference {
-	ocpImageRegistryRoute, err := ctx.OcpRouteClient.Routes("openshift-image-registry").Get("default-route", metav1.GetOptions{})
+	ocpImageRegistryRoute, err := ctx.OcpRouteClient.Routes("openshift-image-registry").Get(context.TODO(), "default-route", metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred())
 
 	ocpImageRegistryHost := ocpImageRegistryRoute.Status.Ingress[0].Host

@@ -24,7 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
 var log = logf.Log.WithName("postgresql")
@@ -53,10 +53,12 @@ func DeploySqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageSql,
-				DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
-					Url:      string(dataSourceURL),
-					UserName: user,
-					Password: password,
+				Sql: apicurio.ApicurioRegistrySpecConfigurationSql{
+					DataSource: apicurio.ApicurioRegistrySpecConfigurationDataSource{
+						Url:      string(dataSourceURL),
+						UserName: user,
+						Password: password,
+					},
 				},
 			},
 			Deployment: apicurio.ApicurioRegistrySpecDeployment{
@@ -107,7 +109,7 @@ func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, na
 	timeout := 120 * time.Second
 	log.Info("Waiting for postgresql database to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -121,7 +123,7 @@ func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, na
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	svc, err := suiteCtx.Clientset.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	dbdata := &DbData{
 		Name:          name,
@@ -138,7 +140,7 @@ func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, na
 //GetPostgresqlDatabasePod gets the database pod from the name given when created
 func GetPostgresqlDatabasePod(clientset *kubernetes.Clientset, namespace string, name string) *corev1.Pod {
 	labelsSet := labels.Set(map[string]string{"app": name})
-	podList, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	podList, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 	Expect(err).ToNot(HaveOccurred())
 	return &podList.Items[0]
 }
@@ -147,34 +149,34 @@ func GetPostgresqlDatabasePod(clientset *kubernetes.Clientset, namespace string,
 func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Clientset, namespace string, name string) {
 	log.Info("Removing postgresql database " + name)
 
-	dep, err := clientset.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+	dep, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err == nil {
 		err = k8sclient.Delete(context.TODO(), dep)
 		Expect(err).ToNot(HaveOccurred())
 		kubernetesutils.WaitForObjectDeleted("Deployment "+name, func() (interface{}, error) {
-			return clientset.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+			return clientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		})
 	} else if !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	pvc, err := clientset.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	pvc, err := clientset.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err == nil {
 		err = k8sclient.Delete(context.TODO(), pvc)
 		Expect(err).ToNot(HaveOccurred())
 		kubernetesutils.WaitForObjectDeleted("PVC "+name, func() (interface{}, error) {
-			return clientset.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+			return clientset.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		})
 	} else if !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	svc, err := clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+	svc, err := clientset.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	if err == nil {
 		err = k8sclient.Delete(context.TODO(), svc)
 		Expect(err).ToNot(HaveOccurred())
 		kubernetesutils.WaitForObjectDeleted("Service "+name, func() (interface{}, error) {
-			return clientset.CoreV1().Services(namespace).Get(name, metav1.GetOptions{})
+			return clientset.CoreV1().Services(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		})
 	} else if !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())

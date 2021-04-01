@@ -7,7 +7,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
-	ocp_apps_client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
@@ -58,7 +57,6 @@ type SuiteContext struct {
 	Clientset     *kubernetes.Clientset
 	IsOpenshift   bool
 
-	OcpAppsClient  *ocp_apps_client.AppsV1Client
 	OcpRouteClient *ocp_route_client.RouteV1Client
 
 	CLIKubernetesClient *kubernetescli.KubernetesClient

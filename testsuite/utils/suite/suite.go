@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
-	ocp_apps_client "github.com/openshift/client-go/apps/clientset/versioned/typed/apps/v1"
 	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
 	utils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
@@ -25,12 +24,10 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/selenium"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
-	customreporters "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/suite/reporters"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	apicurioScheme "github.com/Apicurio/apicurio-registry-operator/pkg/apis"
+	apicurioScheme "github.com/Apicurio/apicurio-registry-operator/api/v1"
 	olmapiversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 	pmversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/client/clientset/versioned"
 )
@@ -70,7 +67,7 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 
 //InitSuite performs common logic for Ginkgo's BeforeSuite
 func InitSuite(suiteCtx *types.SuiteContext) {
-	logf.SetLogger(zap.LoggerTo(GinkgoWriter, true))
+	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
 
@@ -116,7 +113,6 @@ func InitSuite(suiteCtx *types.SuiteContext) {
 
 	if suiteCtx.IsOpenshift {
 		log.Info("Openshift cluster detected")
-		suiteCtx.OcpAppsClient = ocp_apps_client.NewForConfigOrDie(suiteCtx.Cfg)
 		suiteCtx.OcpRouteClient = ocp_route_client.NewForConfigOrDie(suiteCtx.Cfg)
 	}
 
@@ -154,9 +150,9 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	r := []Reporter{printer.NewlineReporter{}, junitReporter}
 
-	if utils.SummaryFile != "" {
-		r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
-	}
+	// if utils.SummaryFile != "" {
+	// 	r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
+	// }
 
 	RunSpecsWithDefaultAndCustomReporters(t, suiteName, r)
 }

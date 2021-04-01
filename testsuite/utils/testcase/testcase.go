@@ -13,6 +13,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
@@ -29,8 +30,7 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 		},
 
 		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace}),
-		//TODO implement kafkasql
-		// Entry("streams", &types.TestContext{Storage: utils.StorageStreams, RegistryNamespace: namespace}),
+		Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace}),
 	)
 
 }
@@ -47,8 +47,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			},
 
 			Entry("sql", &types.TestContext{Storage: utils.StorageSql, Replicas: 3}),
-			//TODO implement kafkasql
-			// Entry("streams", &types.TestContext{Storage: utils.StorageStreams, Replicas: 3, RegistryNamespace: namespace}),
+			Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, Replicas: 3, RegistryNamespace: namespace}),
 		)
 	}
 
@@ -62,24 +61,23 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 		)
 	}
 
-	// var _ = It("backup and restore", func() {
-	// 	ctx := &types.TestContext{}
-	// 	ctx.RegistryNamespace = utils.OperatorNamespace
-	// 	defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-	// 	sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
-	// })
+	var _ = It("backup and restore", func() {
+		ctx := &types.TestContext{}
+		ctx.RegistryNamespace = utils.OperatorNamespace
+		defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+		sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+	})
 
-	//TODO implement this using kafkasql
-	// if suiteCtx.OnlyTestOperator {
-	// 	var _ = DescribeTable("streams security",
-	// 		func(testContext *types.TestContext) {
-	// 			executeTestCase(suiteCtx, testContext)
-	// 		},
+	if suiteCtx.OnlyTestOperator {
+		var _ = DescribeTable("security",
+			func(testContext *types.TestContext) {
+				executeTestCase(suiteCtx, testContext)
+			},
 
-	// 		Entry("scram", &types.TestContext{Storage: utils.StorageStreams, Security: "scram", RegistryNamespace: namespace}),
-	// 		Entry("tls", &types.TestContext{Storage: utils.StorageStreams, Security: "tls", RegistryNamespace: namespace}),
-	// 	)
-	// }
+			Entry("scram", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "scram", RegistryNamespace: namespace}),
+			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "tls", RegistryNamespace: namespace}),
+		)
+	}
 
 }
 
@@ -157,9 +155,8 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 func DeployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	if ctx.Storage == utils.StorageSql {
 		sql.DeploySqlRegistry(suiteCtx, ctx)
-		//TODO implement kafkasql
-		// } else if ctx.Storage == utils.StorageStreams {
-		// streams.DeployStreamsRegistry(suiteCtx, ctx)
+	} else if ctx.Storage == utils.StorageKafkaSql {
+		kafkasql.DeployKafkaSqlRegistry(suiteCtx, ctx)
 	} else {
 		Expect(errors.New("Storage not implemented")).ToNot(HaveOccurred())
 	}
@@ -172,9 +169,8 @@ func CleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContex
 
 	if ctx.Storage == utils.StorageSql {
 		sql.RemoveJpaRegistry(suiteCtx, ctx)
-		//TODO implement kafkasql
-		// } else if ctx.Storage == utils.StorageStreams {
-		// streams.RemoveStreamsRegistry(suiteCtx, ctx)
+	} else if ctx.Storage == utils.StorageKafkaSql {
+		kafkasql.RemoveKafkaSqlRegistry(suiteCtx, ctx)
 	} else {
 		return errors.New("Storage not implemented")
 	}

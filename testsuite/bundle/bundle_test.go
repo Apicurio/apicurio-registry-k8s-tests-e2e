@@ -39,6 +39,7 @@ func installOperator() {
 	} else if strings.HasSuffix(utils.OperatorBundlePath, ".yaml") {
 		file := utils.Template("operator-bundle", bundlePath,
 			utils.Replacement{Old: "{NAMESPACE}", New: operatorNamespace},
+			utils.Replacement{Old: "apicurio-registry-operator-namespace", New: operatorNamespace},
 		)
 		bundlePath = file.Name()
 

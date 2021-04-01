@@ -17,7 +17,7 @@ import (
 
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -25,11 +25,11 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/openshift"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/streams"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
@@ -58,11 +58,11 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	utils.ExecuteCmdOrDie(true, "docker", "push", apicurioDebeziumImage.ExternalImage)
 
 	kafkaClusterName := "test-debezium-kafka"
-	var kafkaClusterInfo *types.KafkaClusterInfo = streams.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
+	var kafkaClusterInfo *types.KafkaClusterInfo = kafkasql.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		kafkaCleanup := func() {
-			streams.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
-			streams.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
+			kafkasql.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
+			kafkasql.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
 		}
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
@@ -79,7 +79,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	err = suiteCtx.K8sClient.Create(context.TODO(), debeziumService(testContext.RegistryNamespace))
 	Expect(err).ToNot(HaveOccurred())
 	if suiteCtx.IsOpenshift {
-		_, err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Create(ocpDebeziumRoute(testContext.RegistryNamespace))
+		_, err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Create(context.TODO(), ocpDebeziumRoute(testContext.RegistryNamespace), metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
 		err = suiteCtx.K8sClient.Create(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
@@ -93,7 +93,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		err = suiteCtx.K8sClient.Delete(context.TODO(), debeziumService(testContext.RegistryNamespace))
 		Expect(err).ToNot(HaveOccurred())
 		if suiteCtx.IsOpenshift {
-			err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Delete(debeziumName, &metav1.DeleteOptions{})
+			err = suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Delete(context.TODO(), debeziumName, metav1.DeleteOptions{})
 			Expect(err).ToNot(HaveOccurred())
 		} else {
 			err = suiteCtx.K8sClient.Delete(context.TODO(), kindDebeziumIngress(testContext.RegistryNamespace))
@@ -106,7 +106,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	debeziumURL := "http://localhost:80/debezium"
 	if suiteCtx.IsOpenshift {
-		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(debeziumName, metav1.GetOptions{})
+		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(context.TODO(), debeziumName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		debeziumURL = "http://" + debeziumRoute.Status.Ingress[0].Host
 	}
@@ -397,8 +397,9 @@ func debeziumService(namespace string) *corev1.Service {
 	}
 }
 
-func kindDebeziumIngress(namespace string) *v1beta1.Ingress {
-	return &v1beta1.Ingress{
+func kindDebeziumIngress(namespace string) *networking.Ingress {
+	pathTypePrefix := networking.PathTypePrefix
+	return &networking.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels:    labels,
 			Name:      debeziumName,
@@ -407,18 +408,23 @@ func kindDebeziumIngress(namespace string) *v1beta1.Ingress {
 				"nginx.ingress.kubernetes.io/rewrite-target": "/$2",
 			},
 		},
-		Spec: v1beta1.IngressSpec{
-			Rules: []v1beta1.IngressRule{
+		Spec: networking.IngressSpec{
+			Rules: []networking.IngressRule{
 				{
 					Host: "localhost",
-					IngressRuleValue: v1beta1.IngressRuleValue{
-						HTTP: &v1beta1.HTTPIngressRuleValue{
-							Paths: []v1beta1.HTTPIngressPath{
+					IngressRuleValue: networking.IngressRuleValue{
+						HTTP: &networking.HTTPIngressRuleValue{
+							Paths: []networking.HTTPIngressPath{
 								{
-									Path: "/debezium(/|$)(.*)",
-									Backend: v1beta1.IngressBackend{
-										ServiceName: debeziumName,
-										ServicePort: intstr.FromInt(8083),
+									Path:     "/debezium(/|$)(.*)",
+									PathType: &pathTypePrefix,
+									Backend: networking.IngressBackend{
+										Service: &networking.IngressServiceBackend{
+											Name: debeziumName,
+											Port: networking.ServiceBackendPort{
+												Number: 8083,
+											},
+										},
 									},
 								},
 							},

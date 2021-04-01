@@ -1,6 +1,7 @@
-package streams
+package kafkasql
 
 import (
+	"context"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -21,15 +22,15 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
-	apicurio "github.com/Apicurio/apicurio-registry-operator/pkg/apis/apicur/v1alpha1"
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
 )
 
-var log = logf.Log.WithName("streams")
+var log = logf.Log.WithName("kafkasql")
 
 var bundlePath string = utils.StrimziOperatorBundlePath
 
-//DeployStreamsRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
-func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+//DeployKafkaSqlRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
+func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	kafkaRequest := &CreateKafkaClusterRequest{
 		Name:           "registry-kafka",
@@ -61,8 +62,7 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
 				LogLevel:    "DEBUG",
 				Persistence: utils.StorageKafkaSql,
-				Streams: apicurio.ApicurioRegistrySpecConfigurationStreams{
-					ApplicationId:    "registry-application-id",
+				Kafkasql: apicurio.ApicurioRegistrySpecConfigurationKafkasql{
 					BootstrapServers: bootstrapServers,
 				},
 			},
@@ -90,8 +90,8 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Cmd: []string{scriptFile},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		registry.Spec.Configuration.Streams.Security.Tls.KeystoreSecretName = keystoreSecret
-		registry.Spec.Configuration.Streams.Security.Tls.TruststoreSecretName = truststoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Tls.KeystoreSecretName = keystoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Tls.TruststoreSecretName = truststoreSecret
 
 		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
 
@@ -109,9 +109,9 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 			Cmd: []string{scriptFile},
 		})
 		Expect(err).ToNot(HaveOccurred())
-		registry.Spec.Configuration.Streams.Security.Scram.TruststoreSecretName = truststoreSecret
-		registry.Spec.Configuration.Streams.Security.Scram.PasswordSecretName = kafkaClusterInfo.Username
-		registry.Spec.Configuration.Streams.Security.Scram.User = kafkaClusterInfo.Username
+		registry.Spec.Configuration.Kafkasql.Security.Scram.TruststoreSecretName = truststoreSecret
+		registry.Spec.Configuration.Kafkasql.Security.Scram.PasswordSecretName = kafkaClusterInfo.Username
+		registry.Spec.Configuration.Kafkasql.Security.Scram.User = kafkaClusterInfo.Username
 
 		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
 
@@ -121,8 +121,8 @@ func DeployStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext)
 
 }
 
-//RemoveStreamsRegistry uninstalls registry CR, kafka cluster and strimzi operator
-func RemoveStreamsRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+//RemoveKafkaSqlRegistry uninstalls registry CR, kafka cluster and strimzi operator
+func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	defer os.Remove(bundlePath)
 
@@ -264,7 +264,7 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	timeout := 10 * time.Minute
 	log.Info("Waiting for kafka cluster to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := suiteCtx.Clientset.AppsV1().Deployments(req.Namespace).Get(req.Name+"-entity-operator", metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(req.Namespace).Get(context.TODO(), req.Name+"-entity-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -285,7 +285,7 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 		timeout := 1 * time.Minute
 		log.Info("Waiting for kafka cluster CA secret to be created ", "timeout", timeout)
 		err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-			_, err := suiteCtx.Clientset.CoreV1().Secrets(req.Namespace).Get(req.Name+"-cluster-ca-cert", metav1.GetOptions{})
+			_, err := suiteCtx.Clientset.CoreV1().Secrets(req.Namespace).Get(context.TODO(), req.Name+"-cluster-ca-cert", metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return false, nil
@@ -301,7 +301,7 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	if req.ExposeExternal {
 		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
 		if suiteCtx.IsOpenshift {
-			route, err := suiteCtx.OcpRouteClient.Routes(req.Namespace).Get(req.Name+"-kafka-bootstrap", metav1.GetOptions{})
+			route, err := suiteCtx.OcpRouteClient.Routes(req.Namespace).Get(context.TODO(), req.Name+"-kafka-bootstrap", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
 			host := route.Status.Ingress[0].Host
@@ -321,7 +321,7 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 
 func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bool {
 
-	_, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+	_, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	} else if err == nil {
@@ -354,7 +354,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi operator to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -388,7 +388,7 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, kafka
 	log.Info("Waiting for kafka cluster to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": kafkaClusterInfo.Name})
-		l, err := clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		l, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -413,7 +413,7 @@ func RemoveStrimziOperator(clientset *kubernetes.Clientset, namespace string) {
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi cluster operator to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.AppsV1().Deployments(namespace).Get("strimzi-cluster-operator", metav1.GetOptions{})
+		_, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil

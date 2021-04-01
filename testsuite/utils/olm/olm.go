@@ -1,6 +1,7 @@
 package olm
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -20,8 +21,8 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
-	operatorsv1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1"
-	operatorsv1alpha1 "github.com/operator-framework/operator-lifecycle-manager/pkg/api/apis/operators/v1alpha1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 )
 
 var log = logf.Log.WithName("olm-testsuite")
@@ -39,7 +40,7 @@ type CreateSubscriptionRequest struct {
 
 func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace string, catalogSourceName string) *operatorsv1alpha1.CatalogSource {
 	log.Info("Creating catalog source " + catalogSourceName)
-	catalog, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Create(&operatorsv1alpha1.CatalogSource{
+	catalog, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Create(context.TODO(), &operatorsv1alpha1.CatalogSource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      catalogSourceName,
 			Namespace: catalogSourceNamespace,
@@ -50,13 +51,13 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 			Publisher:   "apicurio-registry-qe",
 			SourceType:  operatorsv1alpha1.SourceTypeGrpc,
 		},
-	})
+	}, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
 	timeout := 300 * time.Second
 	log.Info("Waiting for catalog source", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(catalogSourceName, metav1.GetOptions{})
+		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(context.TODO(), catalogSourceName, metav1.GetOptions{})
 		if err != nil {
 			if kubeerrors.IsNotFound(err) {
 				return false, nil
@@ -76,7 +77,7 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 
 func DeleteCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace string, catalogSourceName string) {
 	log.Info("Removing catalog source " + catalogSourceName)
-	err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Delete(catalogSourceName, &metav1.DeleteOptions{})
+	err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Delete(context.TODO(), catalogSourceName, metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -84,7 +85,7 @@ func DeleteCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 
 func CreateOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string, operatorGroupName string) *operatorsv1.OperatorGroup {
 	log.Info("Creating operator group")
-	group, err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Create(&operatorsv1.OperatorGroup{
+	group, err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Create(context.TODO(), &operatorsv1.OperatorGroup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      operatorGroupName,
 			Namespace: operatorNamespace,
@@ -92,7 +93,7 @@ func CreateOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string,
 		Spec: operatorsv1.OperatorGroupSpec{
 			TargetNamespaces: []string{operatorNamespace},
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		logPodsAll(operatorNamespace)
 	}
@@ -102,7 +103,7 @@ func CreateOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string,
 }
 
 func DeleteOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string, operatorGroupName string) {
-	err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Delete(operatorGroupName, &metav1.DeleteOptions{})
+	err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Delete(context.TODO(), operatorGroupName, metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -110,7 +111,7 @@ func DeleteOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string,
 
 func CreateSubscription(suiteCtx *types.SuiteContext, req *CreateSubscriptionRequest) *operatorsv1alpha1.Subscription {
 	log.Info("Creating operator subscription", "package", utils.OLMApicurioPackageManifestName, "channel", req.ChannelName, "csv", req.ChannelCSV)
-	sub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(req.SubscriptionNamespace).Create(&operatorsv1alpha1.Subscription{
+	sub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(req.SubscriptionNamespace).Create(context.TODO(), &operatorsv1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.SubscriptionName,
 			Namespace: req.SubscriptionNamespace,
@@ -123,7 +124,7 @@ func CreateSubscription(suiteCtx *types.SuiteContext, req *CreateSubscriptionReq
 			Channel:                req.ChannelName,
 			InstallPlanApproval:    operatorsv1alpha1.ApprovalAutomatic,
 		},
-	})
+	}, metav1.CreateOptions{})
 	if err != nil {
 		logPodsAll(req.SubscriptionNamespace)
 	}
@@ -136,14 +137,14 @@ func CreateSubscription(suiteCtx *types.SuiteContext, req *CreateSubscriptionReq
 
 func DeleteSubscription(suiteCtx *types.SuiteContext, sub *operatorsv1alpha1.Subscription) {
 	log.Info("Going to delete subscription " + sub.Name)
-	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Delete(sub.Name, &metav1.DeleteOptions{})
+	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Delete(context.TODO(), sub.Name, metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	if sub.Spec.StartingCSV != "" {
 		log.Info("Going to delete CSV " + sub.Spec.StartingCSV)
-		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(sub.Namespace).Delete(sub.Spec.StartingCSV, &metav1.DeleteOptions{})
+		err = suiteCtx.OLMClient.OperatorsV1alpha1().ClusterServiceVersions(sub.Namespace).Delete(context.TODO(), sub.Spec.StartingCSV, metav1.DeleteOptions{})
 		if err != nil {
 			if kubeerrors.IsNotFound(err) {
 				//don't wait for operator
@@ -205,7 +206,7 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 	var packageManifest *v1.PackageManifest = nil
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		labelsSet := labels.Set(map[string]string{"catalog": catalogSourceName})
-		pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		pkgsList, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(catalogSourceNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
 		if err != nil && !kubeerrors.IsNotFound(err) {
 			return false, err
 		}

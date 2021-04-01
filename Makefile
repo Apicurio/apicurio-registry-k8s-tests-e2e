@@ -20,7 +20,7 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
-BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/docs/resources/install-dev.yaml
+BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/default-install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
@@ -28,7 +28,7 @@ OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
 # olm variables
 export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
 export E2E_OLM_CHANNEL=apicurio-registry-2.x
-OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-metadata:1.0.0-dev
+OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-bundle:1.0.0-dev
 CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:1.0.0-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 export E2E_OLM_CATALOG_SOURCE_NAMESPACE=olm
@@ -128,7 +128,7 @@ else
 	@echo "Creating Cluster"
 	./scripts/start-kind-image-registry.sh
 	# create a cluster with the local registry enabled in containerd
-	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.17.5 --config=./scripts/${KIND_CLUSTER_CONFIG}
+	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.19.0 --config=./scripts/${KIND_CLUSTER_CONFIG}
 	./scripts/setup-kind-image-registry.sh
 	# setup ingress
 	kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/provider/kind/deploy.yaml
@@ -141,7 +141,8 @@ kind-setup-olm:
 # we run olm tests only for operator testsuite
 run-operator-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator -disable-clustered-tests
+		--cover --trace --race --progress -v ./testsuite/bundle -- -only-test-operator -disable-clustered-tests
+		# ./testsuite/olm
 
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
@@ -174,7 +175,7 @@ run-backupandrestore-test:
 
 run-sql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle -- -only-test-operator
+		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle -- -only-test-operator -disable-clustered-tests
 
 run-kafkasql-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
@@ -222,3 +223,4 @@ ifeq (,$(wildcard ./apicurio-registry-operator))
 else
 	cd apicurio-registry-operator; git pull
 endif
+	cd apicurio-registry-operator; make dist

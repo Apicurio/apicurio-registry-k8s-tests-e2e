@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -38,7 +39,7 @@ func IsOCP(config *rest.Config) (bool, error) {
 
 func CreateNamespace(clientset *kubernetes.Clientset, namespace string) error {
 	log.Info("Creating namespace", "name", namespace)
-	_, err := clientset.CoreV1().Namespaces().Create(&v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+	_, err := clientset.CoreV1().Namespaces().Create(context.TODO(), &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
 	if err == nil && utils.ImagePullSecretUser != "" {
 		//create pull secret
 		log.Info("Creating image pull secret", "name", utils.ImagePullSecretName)
@@ -56,7 +57,7 @@ func CreateTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 
 //DeleteTestNamespace removes one namespace and waits until it's deleted
 func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
-	ns, err := clientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+	ns, err := clientset.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Namespace not found, doing nothing", "name", namespace)
@@ -66,12 +67,12 @@ func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	}
 	if ns != nil {
 		log.Info("Removing namespace", "name", namespace)
-		err = clientset.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{})
+		err = clientset.CoreV1().Namespaces().Delete(context.TODO(), namespace, metav1.DeleteOptions{})
 		Expect(err).ToNot(HaveOccurred())
 		timeout := 60 * time.Second
 		log.Info("Waiting for namespace to be removed", "timeout", timeout)
 		err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-			od, err := clientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+			od, err := clientset.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 			if err != nil {
 				if errors.IsNotFound(err) {
 					return true, nil
@@ -91,7 +92,7 @@ func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace s
 	timeout := 160 * time.Second
 	log.Info("Waiting for operator to be deployed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -110,7 +111,7 @@ func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace
 	timeout := 60 * time.Second
 	log.Info("Waiting for operator to be removed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -127,7 +128,7 @@ func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace
 }
 
 func isOperatorDeployed(clientset *kubernetes.Clientset, namespace string) (bool, error) {
-	od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
+	od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
@@ -147,7 +148,7 @@ func WaitForDeploymentReady(clientset *kubernetes.Clientset, timeout time.Durati
 	// timeout := 120 * time.Second
 	log.Info("Waiting for deployment "+deploymentName+" to be ready ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(deploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -181,7 +182,7 @@ func WaitForObjectDeleted(name string, apiCall func() (interface{}, error)) {
 func SetPullSecret(clientset *kubernetes.Clientset, serviceAccount string, namespace string) {
 	timeout := 10 * time.Second
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.CoreV1().ServiceAccounts(namespace).Get(serviceAccount, metav1.GetOptions{})
+		_, err := clientset.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), serviceAccount, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return false, nil
@@ -192,9 +193,9 @@ func SetPullSecret(clientset *kubernetes.Clientset, serviceAccount string, names
 	})
 	Expect(err).ToNot(HaveOccurred())
 	log.Info("Binding pull secret to service account", "name", serviceAccount)
-	sa, err := clientset.CoreV1().ServiceAccounts(namespace).Get(serviceAccount, metav1.GetOptions{})
+	sa, err := clientset.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), serviceAccount, metav1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	sa.ImagePullSecrets = append(sa.ImagePullSecrets, v1.LocalObjectReference{Name: utils.ImagePullSecretName})
-	_, err = clientset.CoreV1().ServiceAccounts(namespace).Update(sa)
+	_, err = clientset.CoreV1().ServiceAccounts(namespace).Update(context.TODO(), sa, metav1.UpdateOptions{})
 	Expect(err).ToNot(HaveOccurred())
 }
