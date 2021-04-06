@@ -26,10 +26,13 @@ export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
 
 # olm variables
-export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry
+export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry-operator
 export E2E_OLM_CHANNEL=apicurio-registry-2.x
 OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-bundle:1.0.0-dev
-CATALOG_SOURCE_IMAGE=quay.io/apicurio/apicurio-registry-operator-catalog-source:1.0.0-dev
+ifeq ($(CI_BUILD),true)
+OPERATOR_METADATA_IMAGE=localhost:5000/apicurio-registry-operator-bundle:latest-ci
+endif
+CATALOG_SOURCE_IMAGE=localhost:5000/apicurio-registry-operator-index:1.0.0-dev
 export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 export E2E_OLM_CATALOG_SOURCE_NAMESPACE=olm
 export E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE=operators
@@ -69,16 +72,12 @@ send-ci-message:
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
 create-catalog-source-image:
 ifeq ($(CI_BUILD),true)
-	cp ./olm-catalog-source/operator-image.replacer.sh ./olm-catalog-source/manifests_replacer.sh
-	sed -i s,OLD_OPERATOR_IMAGE,$(OPERATOR_IMAGE),g ./olm-catalog-source/manifests_replacer.sh
-	sed -i s,NEW_OPERATOR_IMAGE,localhost:5000/apicurio-registry-operator:latest-ci,g ./olm-catalog-source/manifests_replacer.sh
-else
-	cp ./olm-catalog-source/dummy.replacer.sh ./olm-catalog-source/manifests_replacer.sh
+	cd apicurio-registry-operator; make BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(OPERATOR_IMAGE) bundle-build bundle-push
 endif
-	docker build -t $(CATALOG_SOURCE_IMAGE) --build-arg MANIFESTS_IMAGE=$(OPERATOR_METADATA_IMAGE) ./olm-catalog-source
+	opm index add --bundles $(OPERATOR_METADATA_IMAGE) --tag $(CATALOG_SOURCE_IMAGE) --skip-tls --permissive -c docker
 
 kind-catalog-source-img: create-catalog-source-image
-	${KIND_CMD} load docker-image $(CATALOG_SOURCE_IMAGE) --name $(KIND_CLUSTER_NAME) -v 5
+	docker push $(CATALOG_SOURCE_IMAGE)
 
 kind-load-operator-images:
 	docker tag $(OPERATOR_IMAGE) localhost:5000/apicurio-registry-operator:latest-ci
