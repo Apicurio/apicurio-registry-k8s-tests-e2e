@@ -104,7 +104,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 
 	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 120*time.Second, testContext.RegistryNamespace, debeziumName, 1)
 
-	debeziumURL := "http://localhost:80/debezium"
+	debeziumURL := "http://debezium.127.0.0.1.nip.io:80"
 	if suiteCtx.IsOpenshift {
 		debeziumRoute, err := suiteCtx.OcpRouteClient.Routes(testContext.RegistryNamespace).Get(context.TODO(), debeziumName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred())
@@ -133,6 +133,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		// the postgres image we use for kubernetes is as well provided by debezium and it's configured to work with decoderbufs
 		extraConfig["plugin.name"] = "decoderbufs"
 	}
+	verifyDebeziumIngress(debeziumURL)
 	createDebeziumJdbcConnector(debeziumURL,
 		"my-connector-avro",
 		"io.apicurio.registry.utils.converter.AvroConverter",
@@ -283,6 +284,35 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func verifyDebeziumIngress(debeziumURL string) {
+
+	log.Info("Testing debezium ingress")
+	timeout := 60 * time.Second
+	statusCode := ""
+	body := ""
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		res, err := http.Get(debeziumURL + "/connectors")
+		if err != nil {
+			return false, err
+		}
+		statusCode = res.Status
+		body = utils.ReaderToString(res.Body)
+		log.Info("Status code is " + res.Status)
+		if res.StatusCode >= 200 && res.StatusCode <= 299 {
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		log.Info("Debezium Ingress verification failed with error")
+		log.Info("Status " + statusCode)
+		log.Info("Response " + body)
+	}
+	Expect(err).NotTo(HaveOccurred())
+	log.Info("Successful debezium ingress verification")
+
+}
+
 func executeSQL(namespace string, podName string, sql string) {
 	kubernetescli.Execute("-n", namespace, "exec", podName, "--", "psql", "-d", databaseName, "-U", databaseUser, "-c", sql)
 }
@@ -404,19 +434,16 @@ func kindDebeziumIngress(namespace string) *networking.Ingress {
 			Labels:    labels,
 			Name:      debeziumName,
 			Namespace: namespace,
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/rewrite-target": "/$2",
-			},
 		},
 		Spec: networking.IngressSpec{
 			Rules: []networking.IngressRule{
 				{
-					Host: "localhost",
+					Host: "debezium.127.0.0.1.nip.io",
 					IngressRuleValue: networking.IngressRuleValue{
 						HTTP: &networking.HTTPIngressRuleValue{
 							Paths: []networking.HTTPIngressPath{
 								{
-									Path:     "/debezium(/|$)(.*)",
+									Path:     "/",
 									PathType: &pathTypePrefix,
 									Backend: networking.IngressBackend{
 										Service: &networking.IngressServiceBackend{
