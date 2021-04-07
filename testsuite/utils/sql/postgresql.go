@@ -106,7 +106,7 @@ func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, na
 	err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlService(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 120 * time.Second
+	timeout := 180 * time.Second
 	log.Info("Waiting for postgresql database to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
