@@ -262,9 +262,9 @@ func createDebeziumJdbcConnector(debeziumURL string, connectorName string, conve
 	//register connector
 	res, err := http.Post(debeziumURL+"/connectors/", "application/json", body)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(res.StatusCode >= 200 && res.StatusCode <= 299).To(BeTrue())
 	log.Info("Create connector response is " + res.Status)
 	log.Info("Create connector response is " + utils.ReaderToString(res.Body))
+	Expect(res.StatusCode >= 200 && res.StatusCode <= 299).To(BeTrue())
 
 	log.Info("Waiting for debezium connector to be configured")
 	timeout := 45 * time.Second
