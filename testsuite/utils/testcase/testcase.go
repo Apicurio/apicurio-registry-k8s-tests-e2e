@@ -13,6 +13,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/migration"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -70,6 +71,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 
 		var _ = DescribeTable("data migration",
 			func(testContext *types.TestContext) {
+				defer SaveLogsAndExecuteTestCleanups(suiteCtx, testContext)
 				migration.DataMigrationTestcase(suiteCtx, testContext)
 			},
 
@@ -107,7 +109,10 @@ func MultinamespacedTestCase(suiteCtx *types.SuiteContext) {
 		cleanup := func() {
 			for i := range contexts {
 				defer kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, contexts[i].RegistryNamespace)
-				CleanRegistryDeployment(suiteCtx, contexts[i])
+				contexts[i].RegisterCleanup(func() {
+					deploy.RemoveRegistryDeployment(suiteCtx, contexts[i])
+				})
+				SaveLogsAndExecuteTestCleanups(suiteCtx, contexts[i])
 			}
 		}
 
@@ -115,7 +120,7 @@ func MultinamespacedTestCase(suiteCtx *types.SuiteContext) {
 
 		for i := range contexts {
 			printSeparator()
-			DeployRegistryStorage(suiteCtx, contexts[i])
+			deploy.DeployRegistryStorage(suiteCtx, contexts[i])
 			printSeparator()
 			functional.BasicRegistryAPITest(contexts[i])
 		}
@@ -145,21 +150,33 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 		testContext.RegistryNamespace = utils.OperatorNamespace
 	}
 
-	defer CleanRegistryDeployment(suiteCtx, testContext)
+	testContext.RegisterCleanup(func() {
+		deploy.RemoveRegistryDeployment(suiteCtx, testContext)
+	})
 
-	DeployRegistryStorage(suiteCtx, testContext)
+	defer SaveLogsAndExecuteTestCleanups(suiteCtx, testContext)
+
+	deploy.DeployRegistryStorage(suiteCtx, testContext)
 	printSeparator()
 	testFunction()
 }
 
-func DeployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	deploy.DeployRegistryStorage(suiteCtx, ctx)
-}
-
-//clean namespace, only thing that can be left is registry operator
-func CleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) error {
+func SaveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	printSeparator()
-	return deploy.RemoveRegistryDeployment(suiteCtx, ctx)
+	testDescription := CurrentGinkgoTestDescription()
+
+	testName := ""
+	for _, comp := range testDescription.ComponentTexts {
+		testName += (comp + "-")
+	}
+	testName = testName[0 : len(testName)-1]
+
+	if ctx.ID != "" {
+		testName += ("-" + ctx.ID)
+	}
+
+	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testName)
+	ctx.ExecuteCleanups()
 }
 
 func printSeparator() {

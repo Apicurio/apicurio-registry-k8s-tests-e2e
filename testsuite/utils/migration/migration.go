@@ -16,7 +16,9 @@ func DataMigrationTestcase(suiteCtx *types.SuiteContext, testContext *types.Test
 		Size:              types.SmallSize,
 	}
 
-	defer deploy.RemoveRegistryDeployment(suiteCtx, sourceCtx)
+	testContext.RegisterCleanup(func() {
+		deploy.RemoveRegistryDeployment(suiteCtx, sourceCtx)
+	})
 	deploy.DeployRegistryStorage(suiteCtx, sourceCtx)
 
 	destCtx := &types.TestContext{
@@ -27,7 +29,11 @@ func DataMigrationTestcase(suiteCtx *types.SuiteContext, testContext *types.Test
 		Size:              types.SmallSize,
 	}
 
-	defer deploy.RemoveRegistryDeployment(suiteCtx, destCtx)
+	testContext.RegisterCleanup(func() {
+		//so strimzi operator is removed by last cleanup
+		destCtx.SkipInfraRemoval = true
+		deploy.RemoveRegistryDeployment(suiteCtx, destCtx)
+	})
 	deploy.DeployRegistryStorage(suiteCtx, destCtx)
 
 	migrationTestsCtx := &types.TestContext{

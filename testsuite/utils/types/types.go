@@ -40,6 +40,8 @@ type TestContext struct {
 
 	FunctionalTestsProfile  string
 	FunctionalTestsExtraEnv []string
+
+	SkipInfraRemoval bool
 }
 
 type DeploymentSize string

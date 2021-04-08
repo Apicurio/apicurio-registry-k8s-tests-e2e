@@ -147,7 +147,11 @@ func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 	RemoveKafkaCluster(suiteCtx.Clientset, ctx.RegistryNamespace, ctx.KafkaClusterInfo)
 
-	RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
+	if ctx.SkipInfraRemoval {
+		log.Info("Skipping removal of strimzi operator")
+	} else {
+		RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
+	}
 
 }
 
