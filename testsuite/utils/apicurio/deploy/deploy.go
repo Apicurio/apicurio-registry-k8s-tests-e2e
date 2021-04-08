@@ -40,6 +40,17 @@ func RemoveRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestConte
 
 func beforeRemoveRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	testDescription := CurrentGinkgoTestDescription()
-	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testDescription)
+
+	testName := ""
+	for _, comp := range testDescription.ComponentTexts {
+		testName += (comp + "-")
+	}
+	testName = testName[0 : len(testName)-1]
+
+	if ctx.ID != "" {
+		testName += ("-" + ctx.ID)
+	}
+
+	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testName)
 	ctx.ExecuteCleanups()
 }

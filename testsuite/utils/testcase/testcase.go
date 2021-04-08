@@ -136,9 +136,9 @@ func executeTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContex
 
 //ExecuteTestOnStorage extensible logic to test apicurio registry functionality deployed with one of it's storage variants
 func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestContext, testFunction func()) {
-	if testContext.ID == "" {
-		testContext.ID = testContext.Storage
-	}
+	// if testContext.ID == "" {
+	// 	testContext.ID = testContext.Storage
+	// }
 
 	//implement here support for multiple namespaces
 	if testContext.RegistryNamespace == "" {
