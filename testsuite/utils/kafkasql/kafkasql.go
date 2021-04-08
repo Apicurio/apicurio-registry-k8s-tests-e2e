@@ -134,8 +134,6 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 //RemoveKafkaSqlRegistry uninstalls registry CR, kafka cluster and strimzi operator
 func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	defer os.Remove(bundlePath)
-
 	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
 	if ctx.Security == "tls" {
@@ -150,6 +148,7 @@ func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 	if ctx.SkipInfraRemoval {
 		log.Info("Skipping removal of strimzi operator")
 	} else {
+		defer os.Remove(bundlePath)
 		RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
 	}
 
