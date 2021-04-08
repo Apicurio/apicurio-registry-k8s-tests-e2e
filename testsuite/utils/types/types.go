@@ -6,6 +6,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
@@ -15,12 +16,15 @@ import (
 	pmversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/client/clientset/versioned"
 )
 
+var log = logf.Log.WithName("ctx")
+
 //TestContext holds the common information of for a functional test
 type TestContext struct {
 	ID       string
 	Storage  string
 	Replicas int
 	Security string
+	Size     DeploymentSize
 
 	RegistryNamespace string
 
@@ -33,13 +37,26 @@ type TestContext struct {
 	KafkaClusterInfo *KafkaClusterInfo
 
 	cleanupFunctions []func()
+
+	FunctionalTestsProfile  string
+	FunctionalTestsExtraEnv []string
 }
+
+type DeploymentSize string
+
+var (
+	NormalSize DeploymentSize = DeploymentSize("normal")
+
+	SmallSize DeploymentSize = DeploymentSize("small")
+)
 
 func (ctx *TestContext) RegisterCleanup(cleanup func()) {
 	ctx.cleanupFunctions = append(ctx.cleanupFunctions, cleanup)
 }
 
 func (ctx *TestContext) ExecuteCleanups() {
+	log.Info("Executing cleanups", "context", ctx.ID)
+
 	for i := len(ctx.cleanupFunctions) - 1; i >= 0; i-- {
 		ctx.cleanupFunctions[i]()
 	}

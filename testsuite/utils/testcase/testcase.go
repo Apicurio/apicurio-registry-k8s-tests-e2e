@@ -1,22 +1,19 @@
 package testcase
 
 import (
-	"errors"
 	"strconv"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
-	. "github.com/onsi/gomega"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/deploy"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/sql"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/migration"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
@@ -51,24 +48,7 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 		)
 	}
 
-	if !suiteCtx.OnlyTestOperator {
-		var _ = DescribeTable("kafka connect converters",
-			func(testContext *types.TestContext) {
-				executeConvertersTestCase(suiteCtx, testContext)
-			},
-
-			Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
-		)
-	}
-
 	if suiteCtx.OnlyTestOperator {
-		var _ = It("backup and restore", func() {
-			ctx := &types.TestContext{}
-			ctx.RegistryNamespace = utils.OperatorNamespace
-			defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-			sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
-		})
-
 		var _ = DescribeTable("security",
 			func(testContext *types.TestContext) {
 				executeTestCase(suiteCtx, testContext)
@@ -77,6 +57,32 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			Entry("scram", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "scram", RegistryNamespace: namespace}),
 			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "tls", RegistryNamespace: namespace}),
 		)
+	} else {
+		var _ = DescribeTable("kafka connect converters",
+			func(testContext *types.TestContext) {
+				executeTestOnStorage(suiteCtx, testContext, func() {
+					converters.ConvertersTestCase(suiteCtx, testContext)
+				})
+			},
+
+			Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
+		)
+
+		var _ = DescribeTable("data migration",
+			func(testContext *types.TestContext) {
+				migration.DataMigrationTestcase(suiteCtx, testContext)
+			},
+
+			Entry("sql", &types.TestContext{Storage: utils.StorageSql, ID: utils.StorageSql, RegistryNamespace: utils.OperatorNamespace}),
+			Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, ID: utils.StorageKafkaSql, RegistryNamespace: utils.OperatorNamespace}),
+		)
+
+		// var _ = It("backup and restore", func() {
+		// 	ctx := &types.TestContext{}
+		// 	ctx.RegistryNamespace = utils.OperatorNamespace
+		// 	defer SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
+		// 	sql.ExecuteBackupAndRestoreTestCase(suiteCtx, ctx)
+		// })
 	}
 
 }
@@ -128,12 +134,6 @@ func executeTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContex
 	})
 }
 
-func executeConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
-	executeTestOnStorage(suiteCtx, testContext, func() {
-		converters.ConvertersTestCase(suiteCtx, testContext)
-	})
-}
-
 //ExecuteTestOnStorage extensible logic to test apicurio registry functionality deployed with one of it's storage variants
 func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestContext, testFunction func()) {
 	if testContext.ID == "" {
@@ -153,41 +153,13 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 }
 
 func DeployRegistryStorage(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	if ctx.Storage == utils.StorageSql {
-		sql.DeploySqlRegistry(suiteCtx, ctx)
-	} else if ctx.Storage == utils.StorageKafkaSql {
-		kafkasql.DeployKafkaSqlRegistry(suiteCtx, ctx)
-	} else {
-		Expect(errors.New("Storage not implemented")).ToNot(HaveOccurred())
-	}
+	deploy.DeployRegistryStorage(suiteCtx, ctx)
 }
 
 //clean namespace, only thing that can be left is registry operator
 func CleanRegistryDeployment(suiteCtx *types.SuiteContext, ctx *types.TestContext) error {
-
-	SaveLogsAndExecuteTestCleanups(suiteCtx, ctx)
-
-	if ctx.Storage == utils.StorageSql {
-		sql.RemoveJpaRegistry(suiteCtx, ctx)
-	} else if ctx.Storage == utils.StorageKafkaSql {
-		kafkasql.RemoveKafkaSqlRegistry(suiteCtx, ctx)
-	} else {
-		return errors.New("Storage not implemented")
-	}
-
-	return nil
-}
-
-func SaveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-
 	printSeparator()
-
-	testDescription := CurrentGinkgoTestDescription()
-	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testDescription)
-
-	log.Info("Executing cleanups")
-
-	ctx.ExecuteCleanups()
+	return deploy.RemoveRegistryDeployment(suiteCtx, ctx)
 }
 
 func printSeparator() {
