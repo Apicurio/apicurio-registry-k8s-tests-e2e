@@ -22,7 +22,9 @@ var log = logf.Log.WithName("functional")
 //ExecuteRegistryFunctionalTests invokes via maven the integration tests in apicurio-registry repo
 func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	testProfile := "smoke"
-	if utils.ApicurioTestsProfile != "" {
+	if ctx.FunctionalTestsProfile != "" {
+		testProfile = ctx.FunctionalTestsProfile
+	} else if utils.ApicurioTestsProfile != "" {
 		testProfile = utils.ApicurioTestsProfile
 	}
 
@@ -44,13 +46,22 @@ func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.Tes
 
 	var env = []string{
 		"EXTERNAL_REGISTRY=true",
-		"TEST_REGISTRY_CLIENT=create",
-		"REGISTRY_HOST=" + ctx.RegistryHost,
-		"REGISTRY_PORT=" + ctx.RegistryPort,
-		"SELENIUM_HOST=" + suiteCtx.SeleniumHost,
-		"SELENIUM_PORT=" + suiteCtx.SeleniumPort,
-		"REGISTRY_SELENIUM_HOST=" + ctx.RegistryInternalHost,
-		"REGISTRY_SELENIUM_PORT=" + ctx.RegistryInternalPort,
+	}
+
+	if ctx.RegistryHost != "" {
+		registryEnvs := []string{
+			"REGISTRY_HOST=" + ctx.RegistryHost,
+			"REGISTRY_PORT=" + ctx.RegistryPort,
+			"SELENIUM_HOST=" + suiteCtx.SeleniumHost,
+			"SELENIUM_PORT=" + suiteCtx.SeleniumPort,
+			"REGISTRY_SELENIUM_HOST=" + ctx.RegistryInternalHost,
+			"REGISTRY_SELENIUM_PORT=" + ctx.RegistryInternalPort,
+		}
+		env = append(env, registryEnvs...)
+	}
+
+	if ctx.FunctionalTestsExtraEnv != nil {
+		env = append(env, ctx.FunctionalTestsExtraEnv...)
 	}
 
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: command, Env: env})

@@ -32,12 +32,22 @@ var bundlePath string = utils.StrimziOperatorBundlePath
 //DeployKafkaSqlRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
 func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
+	name := ctx.RegistryName
+	if name == "" {
+		name = "apicurio-registry-" + ctx.Storage
+	}
+
+	kafkaNodes := 3
+	if ctx.Size == types.SmallSize {
+		kafkaNodes = 1
+	}
+
 	kafkaRequest := &CreateKafkaClusterRequest{
-		Name:           "registry-kafka",
+		Name:           "kafka-" + name,
 		Namespace:      ctx.RegistryNamespace,
 		ExposeExternal: false,
-		Replicas:       3,
-		Topics:         []string{"storage-topic", "global-id-topic"},
+		Replicas:       kafkaNodes,
+		Topics:         []string{},
 		Security:       ctx.Security,
 	}
 
@@ -56,7 +66,7 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 	registry := apicurio.ApicurioRegistry{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "apicurio-registry-" + ctx.Storage,
+			Name: name,
 		},
 		Spec: apicurio.ApicurioRegistrySpec{
 			Configuration: apicurio.ApicurioRegistrySpecConfiguration{
@@ -124,8 +134,6 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 //RemoveKafkaSqlRegistry uninstalls registry CR, kafka cluster and strimzi operator
 func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
-	defer os.Remove(bundlePath)
-
 	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
 	if ctx.Security == "tls" {
@@ -137,7 +145,12 @@ func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 	RemoveKafkaCluster(suiteCtx.Clientset, ctx.RegistryNamespace, ctx.KafkaClusterInfo)
 
-	RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
+	if ctx.SkipInfraRemoval {
+		log.Info("Skipping removal of strimzi operator")
+	} else {
+		defer os.Remove(bundlePath)
+		RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
+	}
 
 }
 

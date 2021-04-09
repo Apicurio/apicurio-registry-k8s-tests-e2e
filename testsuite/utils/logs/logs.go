@@ -17,7 +17,6 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
-	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
@@ -69,13 +68,7 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 }
 
 //SaveTestPodsLogs stores logs of all pods in OperatorNamespace
-func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, namespace string, testDescription ginkgo.GinkgoTestDescription) {
-
-	testName := ""
-	for _, comp := range testDescription.ComponentTexts {
-		testName += (comp + "-")
-	}
-	testName = testName[0 : len(testName)-1]
+func SaveTestPodsLogs(clientset *kubernetes.Clientset, suiteID string, namespace string, testName string) {
 
 	log.Info("Collecting test logs", "suite", suiteID, "test", testName)
 
