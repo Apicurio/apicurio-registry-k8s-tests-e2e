@@ -35,6 +35,12 @@ func installOperator() {
 		bundlePath = "/tmp/apicurio-operator-bundle-" + strconv.Itoa(rand.Intn(1000)) + ".yaml"
 		utils.DownloadFile(bundlePath, utils.OperatorBundlePath)
 
+		file := utils.Template("operator-bundle", bundlePath,
+			utils.Replacement{Old: "{NAMESPACE}", New: operatorNamespace},
+			utils.Replacement{Old: "apicurio-registry-operator-namespace", New: operatorNamespace},
+		)
+		bundlePath = file.Name()
+
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", bundlePath)
 	} else if strings.HasSuffix(utils.OperatorBundlePath, ".yaml") {
 		file := utils.Template("operator-bundle", bundlePath,
