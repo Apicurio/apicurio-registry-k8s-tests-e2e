@@ -361,7 +361,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 		bundlePath = utils.StrimziOperatorBundlePath
 	}
 
-	kubernetescli.Execute("apply", "-f", bundlePath, "-n", namespace)
+	kubernetescli.Execute("create", "-f", bundlePath, "-n", namespace)
 
 	// sh("oc wait deployment/strimzi-cluster-operator --for condition=available --timeout=180s")
 	timeout := 120 * time.Second
