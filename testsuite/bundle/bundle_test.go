@@ -53,9 +53,6 @@ func installOperator() {
 	} else {
 
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "service_account.yaml"))
-		if utils.ImagePullSecretUser != "" {
-			kubernetesutils.SetPullSecret(suiteCtx.Clientset, "apicurio-registry-operator", operatorNamespace)
-		}
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "role.yaml"))
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "role_binding.yaml"))
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "cluster_role.yaml"))
@@ -66,6 +63,10 @@ func installOperator() {
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", clusterRoleBindingFile.Name())
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "crds/apicur.io_apicurioregistries_crd.yaml"))
 		kubernetescli.Execute("apply", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "operator.yaml"))
+	}
+
+	if utils.ImagePullSecretUser != "" {
+		kubernetesutils.SetPullSecret(suiteCtx.Clientset, "apicurio-registry-operator", operatorNamespace)
 	}
 
 	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)
