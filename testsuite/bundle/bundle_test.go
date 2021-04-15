@@ -67,6 +67,7 @@ func installOperator() {
 
 	if utils.ImagePullSecretUser != "" {
 		kubernetesutils.SetPullSecret(suiteCtx.Clientset, "apicurio-registry-operator", operatorNamespace)
+		kubernetescli.Execute("delete", "pod", "-l", "name=apicurio-registry-operator", "-n", operatorNamespace)
 	}
 
 	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)
