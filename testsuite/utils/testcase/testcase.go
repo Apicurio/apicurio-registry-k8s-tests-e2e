@@ -59,15 +59,19 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "tls", RegistryNamespace: namespace}),
 		)
 	} else {
-		var _ = DescribeTable("kafka connect converters",
-			func(testContext *types.TestContext) {
-				executeTestOnStorage(suiteCtx, testContext, func() {
-					converters.ConvertersTestCase(suiteCtx, testContext)
-				})
-			},
+		if suiteCtx.DisableConvertersTests {
+			log.Info("Ignoring converters tests")
+		} else {
+			var _ = DescribeTable("kafka connect converters",
+				func(testContext *types.TestContext) {
+					executeTestOnStorage(suiteCtx, testContext, func() {
+						converters.ConvertersTestCase(suiteCtx, testContext)
+					})
+				},
 
-			Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
-		)
+				Entry("sql", &types.TestContext{Storage: utils.StorageSql}),
+			)
+		}
 
 		var _ = DescribeTable("data migration",
 			func(testContext *types.TestContext) {
