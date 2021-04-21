@@ -1,9 +1,12 @@
 package functional
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -99,4 +102,101 @@ func BasicRegistryAPITest(ctx *types.TestContext) {
 	Expect(err).NotTo(HaveOccurred())
 	log.Info("Successful registry API verification")
 
+}
+
+func BasicRegistryAPITestWithAuthentication(ctx *types.TestContext, user string, pwd string) {
+
+	accessToken := issueAccessToken(ctx, user, pwd)
+
+	log.Info("Testing secured registry API")
+	timeout := 60 * time.Second
+	statusCode := ""
+	body := ""
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+
+		req, err := http.NewRequest("GET", "http://"+ctx.RegistryHost+":"+ctx.RegistryPort+"/api/artifacts", nil)
+		Expect(err).NotTo(HaveOccurred())
+		req.Header.Add("Authorization", "Bearer "+accessToken)
+		res, err := http.DefaultClient.Do(req)
+
+		if err != nil {
+			return false, err
+		}
+		statusCode = res.Status
+		body = utils.ReaderToString(res.Body)
+		if res.StatusCode != 200 {
+			return false, nil
+		}
+		log.Info("Status code is " + res.Status)
+		return true, nil
+	})
+	if err != nil {
+		log.Info("Registry API verification failed with error")
+		log.Info("Status " + statusCode)
+		log.Info("Response " + body)
+	}
+	Expect(err).NotTo(HaveOccurred())
+	log.Info("Successful registry API verification")
+
+	verifyUnauthorized(ctx)
+
+}
+
+func issueAccessToken(ctx *types.TestContext, user string, pwd string) string {
+	keycloakUrl := ctx.RegistryResource.Spec.Configuration.Security.Keycloak.Url
+	realm := ctx.RegistryResource.Spec.Configuration.Security.Keycloak.Realm
+	realmUrl := keycloakUrl + "/realms/" + realm + "/protocol/openid-connect/token"
+	clientId := ctx.RegistryResource.Spec.Configuration.Security.Keycloak.ApiClientId
+
+	values := url.Values{}
+	values.Set("grant_type", "password")
+	values.Set("client_id", clientId)
+	values.Set("username", user)
+	values.Set("password", pwd)
+
+	log.Info("Requesting access token")
+
+	res, err := http.PostForm(realmUrl, values)
+	Expect(err).NotTo(HaveOccurred())
+	if res.StatusCode > 299 {
+		b := utils.ReaderToString(res.Body)
+		Expect(errors.New("Keycloak request status code is " + strconv.Itoa(res.StatusCode) + " body is " + b)).NotTo(HaveOccurred())
+	}
+
+	jsonMap := make(map[string]interface{})
+	err = json.Unmarshal(utils.ReaderToBytes(res.Body), &jsonMap)
+	Expect(err).NotTo(HaveOccurred())
+
+	return jsonMap["access_token"].(string)
+}
+
+func verifyUnauthorized(ctx *types.TestContext) {
+	log.Info("Testing secured registry API rejects unauthorized access")
+	timeout := 20 * time.Second
+	statusCode := ""
+	body := ""
+	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+
+		req, err := http.NewRequest("GET", "http://"+ctx.RegistryHost+":"+ctx.RegistryPort+"/api/artifacts", nil)
+		Expect(err).NotTo(HaveOccurred())
+		req.Header.Add("Authorization", "Bearer foo")
+		res, err := http.DefaultClient.Do(req)
+
+		if err != nil {
+			return false, err
+		}
+		statusCode = res.Status
+		body = utils.ReaderToString(res.Body)
+		if res.StatusCode != 401 {
+			return false, nil
+		}
+		log.Info("Status code is " + res.Status)
+		return true, nil
+	})
+	if err != nil {
+		log.Info("Registry API verification failed with error")
+		log.Info("Status " + statusCode)
+		log.Info("Response " + body)
+	}
+	Expect(err).NotTo(HaveOccurred())
 }

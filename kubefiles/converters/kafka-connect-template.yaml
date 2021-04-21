@@ -1,0 +1,54 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: {NAME}
+  namespace: {NAMESPACE}
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  replicas: {REPLICAS}
+  bootstrapServers: {BOOTSTRAP_SERVERS}
+  # config:
+  #   group.id: {NAME}
+  #   offset.storage.topic: {NAME}offsets
+  #   config.storage.topic: {NAME}configs
+  #   status.storage.topic: {NAME}status
+  #   config.storage.replication.factor: {REPLICAS}
+  #   offset.storage.replication.factor: {REPLICAS}
+  #   status.storage.replication.factor: {REPLICAS}
+  build:
+    output:
+      type: docker
+      image: {OUTPUT_IMAGE}
+      # pushSecret: my-registry-credentials
+    plugins:
+      - name: debezium-connector-postgres
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/1.4.1.Final/debezium-connector-postgres-1.4.1.Final-plugin.tar.gz
+            sha512sum: 99b0924aad98c6066e6bd22a05cf25789e6ba95ed53102d0c76e7775c3966ac8cf1b9a88e779685123c90e0bd1512d3bb986ad5052e8cae18cbcd2e8cf16f116
+      - name: apicurio-converters
+        artifacts:
+          - type: tgz
+            url: {CONVERTERS_URL}
+            sha512sum: {CONVERTERS_SHA512SUM}
+  # resources:
+  #   requests:
+  #     cpu: "1"
+  #     memory: 2Gi
+  #   limits:
+  #     cpu: "2"
+  #     memory: 2Gi
+  # logging:
+  #   type: inline
+  #   loggers:
+  #     log4j.rootLogger: "INFO"
+  # readinessProbe:
+  #   initialDelaySeconds: 15
+  #   timeoutSeconds: 5
+  # livenessProbe:
+  #   initialDelaySeconds: 15
+  #   timeoutSeconds: 5
+  # jvmOptions:
+  #   "-Xmx": "1g"
+  #   "-Xms": "1g"

@@ -30,6 +30,10 @@ func DownloadFile(filepath string, url string) error {
 	return err
 }
 
+func ReaderToBytes(reader io.Reader) []byte {
+	return []byte(ReaderToString(reader))
+}
+
 func ReaderToString(reader io.Reader) string {
 	str := new(strings.Builder)
 	_, err := io.Copy(str, reader)

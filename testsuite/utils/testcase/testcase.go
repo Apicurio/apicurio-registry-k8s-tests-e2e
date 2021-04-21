@@ -15,6 +15,7 @@ import (
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/migration"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/security"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
@@ -55,9 +56,18 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 				executeTestCase(suiteCtx, testContext)
 			},
 
-			Entry("scram", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "scram", RegistryNamespace: namespace}),
-			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, Security: "tls", RegistryNamespace: namespace}),
+			Entry("scram", &types.TestContext{Storage: utils.StorageKafkaSql, KafkaSecurity: types.Scram, RegistryNamespace: namespace}),
+			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, KafkaSecurity: types.Tls, RegistryNamespace: namespace}),
 		)
+
+		//TODO FIXME run on k8s as well
+
+		var _ = It("keycloak", func() {
+			if suiteCtx.IsOpenshift {
+				security.Testcase(suiteCtx, namespace)
+			}
+		})
+
 	} else {
 		if suiteCtx.DisableConvertersTests {
 			log.Info("Ignoring converters tests")
@@ -123,9 +133,9 @@ func MultinamespacedTestCase(suiteCtx *types.SuiteContext) {
 		defer cleanup()
 
 		for i := range contexts {
-			printSeparator()
+			logs.PrintSeparator()
 			deploy.DeployRegistryStorage(suiteCtx, contexts[i])
-			printSeparator()
+			logs.PrintSeparator()
 			functional.BasicRegistryAPITest(contexts[i])
 		}
 
@@ -145,10 +155,6 @@ func executeTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContex
 
 //ExecuteTestOnStorage extensible logic to test apicurio registry functionality deployed with one of it's storage variants
 func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestContext, testFunction func()) {
-	// if testContext.ID == "" {
-	// 	testContext.ID = testContext.Storage
-	// }
-
 	//implement here support for multiple namespaces
 	if testContext.RegistryNamespace == "" {
 		testContext.RegistryNamespace = utils.OperatorNamespace
@@ -161,28 +167,14 @@ func executeTestOnStorage(suiteCtx *types.SuiteContext, testContext *types.TestC
 	defer SaveLogsAndExecuteTestCleanups(suiteCtx, testContext)
 
 	deploy.DeployRegistryStorage(suiteCtx, testContext)
-	printSeparator()
+	logs.PrintSeparator()
 	testFunction()
 }
 
 func SaveLogsAndExecuteTestCleanups(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	printSeparator()
-	testDescription := CurrentGinkgoTestDescription()
+	logs.PrintSeparator()
 
-	testName := ""
-	for _, comp := range testDescription.ComponentTexts {
-		testName += (comp + "-")
-	}
-	testName = testName[0 : len(testName)-1]
+	logs.SaveLogs(suiteCtx, ctx)
 
-	if ctx.ID != "" {
-		testName += ("-" + ctx.ID)
-	}
-
-	logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testName)
 	ctx.ExecuteCleanups()
-}
-
-func printSeparator() {
-	log.Info("-----------------------------------------------------------")
 }

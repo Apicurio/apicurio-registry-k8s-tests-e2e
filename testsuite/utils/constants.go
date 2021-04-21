@@ -14,6 +14,9 @@ const (
 	operatorBundlePathEnvVar        = "E2E_OPERATOR_BUNDLE_PATH"
 	strimziOperatorBundlePathEnvVar = "E2E_STRIMZI_BUNDLE_PATH"
 
+	convertersURLEnvVar             = "E2E_CONVERTERS_URL"
+	convertersDistroSha512SumEnvVar = "E2E_CONVERTERS_SHA512SUM"
+
 	oLMCatalogSourceImageEnvVar            = "E2E_OLM_CATALOG_SOURCE_IMAGE"             //mandatory env var for olm tests
 	oLMCatalogSourceNamespaceEnvVar        = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"         //mandatory env var for olm tests
 	oLMApicurioPackageManifestNameEnvVar   = "E2E_OLM_PACKAGE_MANIFEST_NAME"            //mandatory env var for olm tests
@@ -89,3 +92,6 @@ var ImagePullSecretPassword string = os.Getenv(imagePullSecretPasswordEnvVar)
 
 //SummaryFile (optional), file to write tests summary in human readable format, used for CI notification messages
 var SummaryFile string = os.Getenv(summaryFileEnvVar)
+
+var ConvertersURL string = os.Getenv(convertersURLEnvVar)
+var ConvertersDistroSha512Sum string = os.Getenv(convertersDistroSha512SumEnvVar)
