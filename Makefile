@@ -224,7 +224,7 @@ build-apicurio-registry:
 	cd apicurio-registry; mvn install -am -Pprod -Pmultitenancy -pl 'multitenancy/tenant-manager-client' -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress
 
 OPERATOR_REPO?=https://github.com/Apicurio/apicurio-registry-operator.git
-OPERATOR_BRANCH?=keycloak
+OPERATOR_BRANCH?=master
 
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
