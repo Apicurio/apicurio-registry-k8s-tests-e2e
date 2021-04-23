@@ -29,8 +29,7 @@ import (
 
 var log = logf.Log.WithName("postgresql")
 
-//DeploySqlRegistry deploys a posgresql database and deploys an ApicurioRegistry CR using that database
-func DeploySqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+func SqlDeployResource(suiteCtx *types.SuiteContext, ctx *types.TestContext) *apicurio.ApicurioRegistry {
 
 	name := ctx.RegistryName
 	if name == "" {
@@ -71,8 +70,7 @@ func DeploySqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		},
 	}
 
-	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
-
+	return &registry
 }
 
 //RemoveJpaRegistry uninstalls registry CR and postgresql database

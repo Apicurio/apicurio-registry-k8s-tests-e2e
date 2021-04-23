@@ -17,6 +17,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	apicurioutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio"
 	apicurioclient "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/client"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/deploy"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
@@ -78,20 +79,23 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		SubscriptionName:      operatorSubscriptionName,
 		SubscriptionNamespace: operatorNamespace,
 
+		Package:                utils.OLMApicurioPackageManifestName,
 		CatalogSourceName:      startingCatalogSource,
 		CatalogSourceNamespace: startingCatalogSourceNamespace,
 
 		ChannelName: channel,
 		ChannelCSV:  startingCSV,
 	})
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
+
 	ctx.RegisterCleanup(func() {
-		olm.DeleteSubscription(suiteCtx, sub)
+		olm.DeleteSubscription(suiteCtx, sub, true)
 	})
 
 	//deploy registry and run smoke tests
 	kubernetescli.GetPods(operatorNamespace)
 
-	testcase.DeployRegistryStorage(suiteCtx, ctx)
+	deploy.DeployRegistryStorage(suiteCtx, ctx)
 
 	// functional.ExecuteRegistryFunctionalTests(suiteCtx, ctx)
 
@@ -150,7 +154,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 
 	ctx.RegisterCleanup(func() {
 		updatedsub.Spec.StartingCSV = upgradeCSV
-		olm.DeleteSubscription(suiteCtx, updatedsub)
+		olm.DeleteSubscription(suiteCtx, updatedsub, true)
 	})
 
 	//wait for new csv to be created

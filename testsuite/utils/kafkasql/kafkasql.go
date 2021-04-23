@@ -29,9 +29,7 @@ var log = logf.Log.WithName("kafkasql")
 
 var bundlePath string = utils.StrimziOperatorBundlePath
 
-//DeployKafkaSqlRegistry deploys a kafka cluster using strimzi operator and deploys an ApicurioRegistry CR using the kafka cluster
-func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-
+func KafkaSqlDeployResource(suiteCtx *types.SuiteContext, ctx *types.TestContext) *apicurio.ApicurioRegistry {
 	name := ctx.RegistryName
 	if name == "" {
 		name = "apicurio-registry-" + ctx.Storage
@@ -48,7 +46,7 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 		ExposeExternal: false,
 		Replicas:       kafkaNodes,
 		Topics:         []string{},
-		Security:       ctx.Security,
+		Security:       string(ctx.KafkaSecurity),
 	}
 
 	kafkaClusterInfo := DeployKafkaCluster(suiteCtx, kafkaRequest)
@@ -82,7 +80,7 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 		},
 	}
 
-	if ctx.Security == "tls" {
+	if ctx.KafkaSecurity == types.Tls {
 		truststoreSecret := kafkaRequest.Name + "-cluster-ca-truststore"
 		keystoreSecret := kafkaClusterInfo.Username + "-keystore"
 
@@ -105,7 +103,7 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 		defer utils.ExecuteCmd(true, &utils.Command{Cmd: []string{utils.SuiteProjectDir + "/scripts/kafka/clean_certs.sh"}})
 
-	} else if ctx.Security == "scram" {
+	} else if ctx.KafkaSecurity == types.Scram {
 		truststoreSecret := kafkaRequest.Name + "-cluster-ca-truststore"
 
 		scriptFile := utils.SuiteProjectDir + "/scripts/kafka/create_cert_stores.sh"
@@ -127,8 +125,7 @@ func DeployKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 	}
 
-	apicurioutils.CreateRegistryAndWait(suiteCtx, ctx, &registry)
-
+	return &registry
 }
 
 //RemoveKafkaSqlRegistry uninstalls registry CR, kafka cluster and strimzi operator
@@ -136,10 +133,10 @@ func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 
 	apicurioutils.DeleteRegistryAndWait(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName)
 
-	if ctx.Security == "tls" {
+	if ctx.KafkaSecurity == types.Tls {
 		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Name+"-cluster-ca-truststore", "-n", ctx.RegistryNamespace)
 		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Username+"-keystore", "-n", ctx.RegistryNamespace)
-	} else if ctx.Security == "scram" {
+	} else if ctx.KafkaSecurity == types.Scram {
 		kubernetescli.Execute("delete", "secret", ctx.KafkaClusterInfo.Name+"-cluster-ca-truststore", "-n", ctx.RegistryNamespace)
 	}
 
@@ -182,7 +179,9 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	clusterInfo := &types.KafkaClusterInfo{StrimziDeployed: strimziDeployed}
 
 	clusterInfo.Name = req.Name
+	clusterInfo.Namespace = req.Namespace
 	clusterInfo.Topics = req.Topics
+	clusterInfo.Replicas = req.Replicas
 
 	if req.Security == "tls" || req.Security == "scram" {
 		authType := "tls"
@@ -330,6 +329,78 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	}
 	clusterInfo.BootstrapServers = bootstrapServers
 	return clusterInfo
+}
+
+func DeployKafkaConnect(suiteCtx *types.SuiteContext, kafkaClusterInfo *types.KafkaClusterInfo, image string, convertersPlugin types.KafkaConnectPlugin) {
+
+	var replicasStr string = strconv.Itoa(kafkaClusterInfo.Replicas)
+
+	replacings := []utils.Replacement{
+		{Old: "{NAMESPACE}", New: kafkaClusterInfo.Namespace},
+		{Old: "{NAME}", New: kafkaClusterInfo.Name},
+		{Old: "{REPLICAS}", New: replicasStr},
+		{Old: "{BOOTSTRAP_SERVERS}", New: kafkaClusterInfo.BootstrapServers},
+		{Old: "{OUTPUT_IMAGE}", New: image},
+		{Old: "{CONVERTERS_URL}", New: convertersPlugin.URL},
+		{Old: "{CONVERTERS_SHA512SUM}", New: convertersPlugin.SHA512SUM},
+	}
+
+	kafkaClusterManifestFile := utils.Template("kafka-connect",
+		utils.SuiteProjectDir+"/kubefiles/converters/kafka-connect-template.yaml",
+		replacings...,
+	)
+	kafkaClusterManifest := kafkaClusterManifestFile.Name()
+
+	log.Info("Deploying kafka connect " + kafkaClusterInfo.Name)
+	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", kafkaClusterInfo.Namespace)
+
+	//wait for kafka connect
+	//TODO make this timeout configurable
+	timeout := 10 * time.Minute
+	log.Info("Waiting for kafka connect to be ready ", "timeout", timeout)
+	// err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+	// 	od, err := suiteCtx.Clientset.AppsV1().Deployments(kafkaClusterInfo.Namespace).Get(context.TODO(), req.Name+"-entity-operator", metav1.GetOptions{})
+	// 	if err != nil && !errors.IsNotFound(err) {
+	// 		return false, err
+	// 	}
+	// 	if od != nil {
+	// 		if od.Status.AvailableReplicas > int32(0) {
+	// 			return true, nil
+	// 		}
+	// 	}
+	// 	return false, nil
+	// })
+	time.Sleep(180 * time.Second)
+	kubernetescli.GetDeployments(kafkaClusterInfo.Namespace)
+	kubernetescli.GetPods(kafkaClusterInfo.Namespace)
+	kubernetescli.Execute("get", "ingress", "-n", kafkaClusterInfo.Namespace)
+	// Expect(err).ToNot(HaveOccurred())
+
+}
+
+func RemoveKafkaConnect(suiteCtx *types.SuiteContext, kafkaClusterInfo *types.KafkaClusterInfo) {
+	log.Info("Removing kafka connect")
+
+	kubernetescli.Execute("delete", "kafkaconnect", kafkaClusterInfo.Name, "-n", kafkaClusterInfo.Namespace)
+
+	timeout := 120 * time.Second
+	log.Info("Waiting for kafka connect to be removed ", "timeout", timeout)
+	// err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+	// 	labelsSet := labels.Set(map[string]string{"strimzi.io/cluster": kafkaClusterInfo.Name})
+	// 	l, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+	// 	if err != nil {
+	// 		if errors.IsNotFound(err) {
+	// 			return true, nil
+	// 		}
+	// 		return false, err
+	// 	}
+	// 	return len(l.Items) == 0, nil
+	// })
+	kubernetescli.GetDeployments(kafkaClusterInfo.Namespace)
+	kubernetescli.GetStatefulSets(kafkaClusterInfo.Namespace)
+	kubernetescli.GetPods(kafkaClusterInfo.Namespace)
+	kubernetescli.GetVolumes(kafkaClusterInfo.Namespace)
+	// Expect(err).ToNot(HaveOccurred())
 }
 
 func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bool {

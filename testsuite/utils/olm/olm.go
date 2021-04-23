@@ -31,6 +31,7 @@ type CreateSubscriptionRequest struct {
 	SubscriptionNamespace string
 	SubscriptionName      string
 
+	Package                string
 	CatalogSourceName      string
 	CatalogSourceNamespace string
 
@@ -110,14 +111,14 @@ func DeleteOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string,
 }
 
 func CreateSubscription(suiteCtx *types.SuiteContext, req *CreateSubscriptionRequest) *operatorsv1alpha1.Subscription {
-	log.Info("Creating operator subscription", "package", utils.OLMApicurioPackageManifestName, "channel", req.ChannelName, "csv", req.ChannelCSV)
+	log.Info("Creating operator subscription", "package", req.Package, "channel", req.ChannelName, "csv", req.ChannelCSV)
 	sub, err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(req.SubscriptionNamespace).Create(context.TODO(), &operatorsv1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      req.SubscriptionName,
 			Namespace: req.SubscriptionNamespace,
 		},
 		Spec: &operatorsv1alpha1.SubscriptionSpec{
-			Package:                utils.OLMApicurioPackageManifestName,
+			Package:                req.Package,
 			CatalogSource:          req.CatalogSourceName,
 			CatalogSourceNamespace: req.CatalogSourceNamespace,
 			StartingCSV:            req.ChannelCSV,
@@ -130,12 +131,10 @@ func CreateSubscription(suiteCtx *types.SuiteContext, req *CreateSubscriptionReq
 	}
 	Expect(err).ToNot(HaveOccurred())
 
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, req.SubscriptionNamespace)
-
 	return sub
 }
 
-func DeleteSubscription(suiteCtx *types.SuiteContext, sub *operatorsv1alpha1.Subscription) {
+func DeleteSubscription(suiteCtx *types.SuiteContext, sub *operatorsv1alpha1.Subscription, defaultWait bool) {
 	log.Info("Going to delete subscription " + sub.Name)
 	err := suiteCtx.OLMClient.OperatorsV1alpha1().Subscriptions(sub.Namespace).Delete(context.TODO(), sub.Name, metav1.DeleteOptions{})
 	if err != nil && !kubeerrors.IsNotFound(err) {
@@ -152,7 +151,9 @@ func DeleteSubscription(suiteCtx *types.SuiteContext, sub *operatorsv1alpha1.Sub
 			}
 			Expect(err).ToNot(HaveOccurred())
 		}
-		kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, sub.Namespace)
+		if defaultWait {
+			kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, sub.Namespace)
+		}
 	}
 }
 
@@ -243,11 +244,13 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 	sub := CreateSubscription(suiteCtx, &CreateSubscriptionRequest{
 		SubscriptionName:       operatorSubscriptionName,
 		SubscriptionNamespace:  operatorNamespace,
+		Package:                utils.OLMApicurioPackageManifestName,
 		CatalogSourceName:      catalogSourceName,
 		CatalogSourceNamespace: catalogSourceNamespace,
 		ChannelCSV:             channelCSV,
 		ChannelName:            channelName,
 	})
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
 
 	return &OLMInstallationInfo{
 		CatalogSource: catalog,
@@ -264,7 +267,7 @@ func UninstallOperatorOLM(suiteCtx *types.SuiteContext, olminfo *OLMInstallation
 
 	log.Info("Uninstalling operator")
 
-	DeleteSubscription(suiteCtx, olminfo.Subscription)
+	DeleteSubscription(suiteCtx, olminfo.Subscription, true)
 
 	if olminfo.OperatorGroup != nil {
 		DeleteOperatorGroup(suiteCtx, olminfo.OperatorGroup.Namespace, olminfo.OperatorGroup.Name)

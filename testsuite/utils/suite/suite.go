@@ -38,6 +38,7 @@ var onlyTestOperator bool
 var setupSelenium bool
 var disableClusteredTests bool
 var disableConvertersTests bool
+var disableAuthTests bool
 
 //SetFlags call this function on init function on test suite package
 func SetFlags() {
@@ -45,6 +46,7 @@ func SetFlags() {
 	flag.BoolVar(&setupSelenium, "setup-selenium", false, "to deploy selenium, used for ui testing, if this flag is not passed testsuite will deploy selenium anyway if it detects it's required")
 	flag.BoolVar(&disableClusteredTests, "disable-clustered-tests", false, "to disable tests for clustered registry deployments")
 	flag.BoolVar(&disableConvertersTests, "disable-converters-tests", false, "to disable tests for kafka connect converters")
+	flag.BoolVar(&disableAuthTests, "disable-auth-tests", false, "to disable tests for keycloak authentication")
 }
 
 //NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
@@ -65,6 +67,11 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 	suiteCtx.DisableConvertersTests = disableConvertersTests
 	if suiteCtx.DisableConvertersTests {
 		log.Info("Converters tests disabled")
+	}
+
+	suiteCtx.DisableAuthTests = disableAuthTests
+	if suiteCtx.DisableAuthTests {
+		log.Info("Keycloak Authentication tests disabled")
 	}
 
 	suiteCtx.SetupSelenium = setupSelenium

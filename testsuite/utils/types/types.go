@@ -12,6 +12,8 @@ import (
 
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 
+	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	olmapiversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 	pmversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/client/clientset/versioned"
 )
@@ -20,11 +22,12 @@ var log = logf.Log.WithName("ctx")
 
 //TestContext holds the common information of for a functional test
 type TestContext struct {
-	ID       string
-	Storage  string
-	Replicas int
-	Security string
-	Size     DeploymentSize
+	ID            string
+	Storage       string
+	Replicas      int
+	Auth          bool
+	Size          DeploymentSize
+	KafkaSecurity kafkaSecurity
 
 	RegistryNamespace string
 
@@ -34,7 +37,10 @@ type TestContext struct {
 	RegistryInternalHost string
 	RegistryInternalPort string
 
-	KafkaClusterInfo *KafkaClusterInfo
+	RegistryResource     *apicurio.ApicurioRegistry
+	KafkaClusterInfo     *KafkaClusterInfo
+	KeycloakURL          string
+	KeycloakSubscription *operatorsv1alpha1.Subscription
 
 	cleanupFunctions []func()
 
@@ -44,12 +50,15 @@ type TestContext struct {
 	SkipInfraRemoval bool
 }
 
+type kafkaSecurity string
 type DeploymentSize string
 
 var (
 	NormalSize DeploymentSize = DeploymentSize("normal")
+	SmallSize  DeploymentSize = DeploymentSize("small")
 
-	SmallSize DeploymentSize = DeploymentSize("small")
+	Scram kafkaSecurity = kafkaSecurity("scram")
+	Tls   kafkaSecurity = kafkaSecurity("tls")
 )
 
 func (ctx *TestContext) RegisterCleanup(cleanup func()) {
@@ -83,6 +92,7 @@ type SuiteContext struct {
 	OnlyTestOperator       bool
 	DisableClusteredTests  bool
 	DisableConvertersTests bool
+	DisableAuthTests       bool
 
 	SetupSelenium bool
 	SeleniumHost  string
@@ -97,10 +107,17 @@ type OcpImageReference struct {
 //KafkaClusterInfo holds useful info to use a kafka cluster
 type KafkaClusterInfo struct {
 	Name                     string
+	Namespace                string
+	Replicas                 int
 	Topics                   []string
 	StrimziDeployed          bool
 	BootstrapServers         string
 	ExternalBootstrapServers string
 	AuthType                 string
 	Username                 string
+}
+
+type KafkaConnectPlugin struct {
+	URL       string
+	SHA512SUM string
 }

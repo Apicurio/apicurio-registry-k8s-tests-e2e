@@ -159,6 +159,10 @@ run-security-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="security" ./testsuite/bundle -- -only-test-operator
 
+run-keycloak-tests:
+	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+		--cover --trace --race --progress -v --focus="keycloak" ./testsuite/bundle -- -only-test-operator
+
 run-migration-tests:
 	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
 		--cover --trace --race --progress -v --focus="migration" ./testsuite/bundle
@@ -219,9 +223,12 @@ build-apicurio-registry:
 	cd apicurio-registry; mvn install -am -Pprod -pl distro/connect-converter -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress
 	cd apicurio-registry; mvn install -am -Pprod -Pmultitenancy -pl 'multitenancy/tenant-manager-client' -DskipTests -Dmaven.javadoc.skip=true --no-transfer-progress
 
+OPERATOR_REPO?=https://github.com/Apicurio/apicurio-registry-operator.git
+OPERATOR_BRANCH?=master
+
 pull-operator-repo:
 ifeq (,$(wildcard ./apicurio-registry-operator))
-	git clone https://github.com/Apicurio/apicurio-registry-operator.git
+	git clone -b $(OPERATOR_BRANCH) $(OPERATOR_REPO)
 else
 	cd apicurio-registry-operator; git pull
 endif
