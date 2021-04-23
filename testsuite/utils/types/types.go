@@ -92,6 +92,7 @@ type SuiteContext struct {
 	OnlyTestOperator       bool
 	DisableClusteredTests  bool
 	DisableConvertersTests bool
+	DisableAuthTests       bool
 
 	SetupSelenium bool
 	SeleniumHost  string

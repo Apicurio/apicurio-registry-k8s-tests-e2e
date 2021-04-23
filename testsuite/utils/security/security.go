@@ -42,7 +42,12 @@ func runStorageSecurityTest(suiteCtx *types.SuiteContext, s *types.TestContext) 
 
 	deploy.DeployRegistryStorage(suiteCtx, s)
 
+	// if suiteCtx.OnlyTestOperator {
 	runSecurityTest(suiteCtx, s)
+	// } else {
+	// 	runFunctionalSecurityTests(suiteCtx, s)
+	// }
+
 }
 
 func runSecurityTest(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
@@ -60,19 +65,40 @@ func runSecurityTest(suiteCtx *types.SuiteContext, testContext *types.TestContex
 	roPwd := "changeme"
 	functional.BasicRegistryAPITestWithAuthentication(testContext, roUser, roPwd)
 
-	//TODO use the basic test for the operator and the java tests for the registry
-
-	// authTestsCtx := &types.TestContext{
-	// 	Storage:                 testContext.Storage,
-	// 	FunctionalTestsProfile:  "auth",
-	// 	FunctionalTestsExtraEnv: []string{
-	// 		//TODO create java tests and set env vars
-	// 		// "SOURCE_REGISTRY_HOST=" + sourceCtx.RegistryHost,
-	// 		// "SOURCE_REGISTRY_PORT=" + sourceCtx.RegistryPort,
-	// 		// "DEST_REGISTRY_HOST=" + destCtx.RegistryHost,
-	// 		// "DEST_REGISTRY_PORT=" + destCtx.RegistryPort,
-	// 	},
-	// }
-	// functional.ExecuteRegistryFunctionalTests(suiteCtx, authTestsCtx)
-
 }
+
+//TODO fix me , java tests do client credentials flow, k8s testsuite is prepared for user/password flow
+// func runFunctionalSecurityTests(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
+
+// 	// info hardcoded in kubefiles/keycloak/*.yaml
+// 	adminUser := "registry-admin"
+// 	adminPwd := "changeme"
+
+// 	devUser := "registry-developer"
+// 	devPwd := "changeme"
+
+// 	roUser := "registry-user"
+// 	roPwd := "changeme"
+
+// 	authServerUrl := ctx.RegistryResource.Spec.Configuration.Security.Keycloak.Url
+// 	realm := ctx.RegistryResource.Spec.Configuration.Security.Keycloak.Realm
+
+// 	authTestsCtx := &types.TestContext{
+// 		Storage:                ctx.Storage,
+// 		FunctionalTestsProfile: "auth",
+// 		FunctionalTestsExtraEnv: []string{
+// 			"AUTH_SERVER_URL", authServerUrl,
+// 			"AUTH_REALM", realm,
+
+// 			"AUTH_ADMIN_CLIENT_ID", adminUser,
+
+// 			//TODO create java tests and set env vars
+// 			// "SOURCE_REGISTRY_HOST=" + sourceCtx.RegistryHost,
+// 			// "SOURCE_REGISTRY_PORT=" + sourceCtx.RegistryPort,
+// 			// "DEST_REGISTRY_HOST=" + destCtx.RegistryHost,
+// 			// "DEST_REGISTRY_PORT=" + destCtx.RegistryPort,
+// 		},
+// 	}
+// 	functional.ExecuteRegistryFunctionalTests(suiteCtx, authTestsCtx)
+
+// }

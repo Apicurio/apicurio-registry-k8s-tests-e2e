@@ -60,13 +60,16 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, KafkaSecurity: types.Tls, RegistryNamespace: namespace}),
 		)
 
-		//TODO FIXME run on k8s as well
-
-		var _ = It("keycloak", func() {
-			if suiteCtx.IsOpenshift {
-				security.Testcase(suiteCtx, namespace)
-			}
-		})
+		if suiteCtx.DisableAuthTests {
+			log.Info("Ignoring Keycloak Authentication tests")
+		} else {
+			//TODO FIXME run on k8s as well
+			var _ = It("keycloak", func() {
+				if suiteCtx.IsOpenshift {
+					security.Testcase(suiteCtx, namespace)
+				}
+			})
+		}
 
 	} else {
 		if suiteCtx.DisableConvertersTests {
