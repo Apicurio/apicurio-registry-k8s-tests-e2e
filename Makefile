@@ -91,20 +91,20 @@ APICURIO_IMAGES_TAG?=latest-snapshot
 kind-load-apicurio-images:
 	docker tag apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-mem:latest-ci
 	docker push localhost:5000/apicurio-registry-mem:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-mem.*\"#localhost:5000/apicurio-registry-mem:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-mem.*#localhost:5000/apicurio-registry-mem:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-kafkasql:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-kafkasql:latest-ci
 	docker push localhost:5000/apicurio-registry-kafkasql:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-kafkasql.*\"#localhost:5000/apicurio-registry-kafkasql:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-kafkasql.*#localhost:5000/apicurio-registry-kafkasql:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 	docker tag apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG) localhost:5000/apicurio-registry-sql:latest-ci
 	docker push localhost:5000/apicurio-registry-sql:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-sql.*\"#localhost:5000/apicurio-registry-sql:latest-ci\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#quay.io/apicurio/apicurio-registry-sql.*#localhost:5000/apicurio-registry-sql:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 default-replace-apicurio-images:
-	sed -i "s#apicurio/apicurio-registry-mem.*\"#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-kafkasql.*\"#apicurio/apicurio-registry-kafkasql:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
-	sed -i "s#apicurio/apicurio-registry-sql.*\"#apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG)\"#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-mem.*#apicurio/apicurio-registry-mem:$(APICURIO_IMAGES_TAG)#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-kafkasql.*#apicurio/apicurio-registry-kafkasql:$(APICURIO_IMAGES_TAG)#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#apicurio/apicurio-registry-sql.*#apicurio/apicurio-registry-sql:$(APICURIO_IMAGES_TAG)#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 ifeq ($(CI_BUILD),true)
 APICURIO_TARGETS = kind-load-apicurio-images
