@@ -32,6 +32,19 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 		Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace}),
 	)
 
+	if suiteCtx.OnlyTestOperator {
+		if suiteCtx.DisableAuthTests {
+			log.Info("Ignoring Keycloak Authentication tests")
+		} else {
+			//TODO FIXME run on k8s as well
+			var _ = It("keycloak", func() {
+				if suiteCtx.IsOpenshift {
+					security.Testcase(suiteCtx, namespace)
+				}
+			})
+		}
+	}
+
 }
 
 //BundleOnlyTestCases contains test cases that will be only executed for operator bundle installation
@@ -59,18 +72,6 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			Entry("scram", &types.TestContext{Storage: utils.StorageKafkaSql, KafkaSecurity: types.Scram, RegistryNamespace: namespace}),
 			Entry("tls", &types.TestContext{Storage: utils.StorageKafkaSql, KafkaSecurity: types.Tls, RegistryNamespace: namespace}),
 		)
-
-		if suiteCtx.DisableAuthTests {
-			log.Info("Ignoring Keycloak Authentication tests")
-		} else {
-			//TODO FIXME run on k8s as well
-			var _ = It("keycloak", func() {
-				if suiteCtx.IsOpenshift {
-					security.Testcase(suiteCtx, namespace)
-				}
-			})
-		}
-
 	} else {
 		if suiteCtx.DisableConvertersTests {
 			log.Info("Ignoring converters tests")
