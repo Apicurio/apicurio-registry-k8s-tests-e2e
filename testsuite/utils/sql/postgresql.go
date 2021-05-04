@@ -96,18 +96,19 @@ type DbData struct {
 func DeployDebeziumPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
 	log.Info("Deploying postgresql database for Debezium " + name)
 
-	deployment := debeziumPostgresqlDeployment(namespace, name, database, user, password)
+	var d *v1.Deployment
+	if suiteCtx.IsOpenshift {
+		d = debeziumOpenshiftPostgresqlDeployment(namespace, name, database, user, password)
+	} else {
+		d = debeziumKubernetesPostgresqlDeployment(namespace, name, database, user, password)
+	}
 
-	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, deployment)
+	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, d)
 }
 
 //DeployPostgresqlDatabase deploys a postgresql database
 func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
-	log.Info("Deploying postgresql database " + name)
-
-	var d *v1.Deployment
-	d = deployment(namespace, name, database, user, password)
-
+	var d *v1.Deployment = deployment(namespace, name, database, user, password)
 	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, d)
 }
 
@@ -292,7 +293,7 @@ func deployment(namespace string, name string, database string, user string, pas
 	}
 }
 
-func debeziumPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+func debeziumOpenshiftPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
 	labels := map[string]string{"app": name}
 	var replicas int32 = 1
 	var readinessProbe string = "PGPASSWORD=" + password + " /usr/bin/psql -w -U " + user + " -d " + database + " -c 'SELECT 1'"
@@ -361,6 +362,103 @@ func debeziumPostgresqlDeployment(namespace string, name string, database string
 						},
 					},
 					RestartPolicy: corev1.RestartPolicyAlways,
+				},
+			},
+		},
+	}
+}
+
+func debeziumKubernetesPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+	labels := map[string]string{"app": name}
+	var replicas int32 = 1
+	return &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:    labels,
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: name,
+							// Image: "centos/postgresql-10-centos7:20200917-804ef01",
+							// Image: "quay.io/debezium/example-postgres:1.2",
+							// Image: "quay.io/debezium/postgres:10",
+							Image: "quay.io/debezium/postgres:12",
+							Env: []corev1.EnvVar{
+								// {
+								// 	Name:  "POSTGRESQL_ADMIN_PASSWORD",
+								// 	Value: "admin1234",
+								// },
+								{
+									// Name:  "POSTGRESQL_DATABASE",
+									Name:  "POSTGRES_DB",
+									Value: database,
+								},
+								{
+									// Name:  "POSTGRESQL_PASSWORD",
+									Name:  "POSTGRES_PASSWORD",
+									Value: password,
+								},
+								{
+									// Name:  "POSTGRESQL_USER",
+									Name:  "POSTGRES_USER",
+									Value: user,
+								},
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 5432,
+									Name:          "postgresql",
+									Protocol:      "TCP",
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       10,
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 15,
+								PeriodSeconds:       20,
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									// MountPath: "/var/lib/pgsql/data",
+									MountPath: "/var/lib/postgresql/data",
+									Name:      name,
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: name,
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: name,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
