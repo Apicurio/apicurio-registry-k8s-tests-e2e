@@ -92,19 +92,34 @@ type DbData struct {
 	DataSourceURL string
 }
 
+//DeployDebeziumPostgresqlDatabase deploys a postgresql database specifically configured to work with debezium
+func DeployDebeziumPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
+	log.Info("Deploying postgresql database for Debezium " + name)
+
+	deployment := debeziumPostgresqlDeployment(namespace, name, database, user, password)
+
+	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, deployment)
+}
+
 //DeployPostgresqlDatabase deploys a postgresql database
 func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
 	log.Info("Deploying postgresql database " + name)
 
+	var d *v1.Deployment
+	d = deployment(namespace, name, database, user, password)
+
+	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, d)
+}
+
+func deployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string, databaseDeployment *v1.Deployment) *DbData {
+	log.Info("Deploying postgresql database " + name)
+
 	err := suiteCtx.K8sClient.Create(context.TODO(), postgresqlPersistentVolumeClaim(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
-	if suiteCtx.IsOpenshift {
-		err = suiteCtx.K8sClient.Create(context.TODO(), openshiftPostgresqlDeployment(namespace, name, database, user, password))
-		Expect(err).ToNot(HaveOccurred())
-	} else {
-		err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlDeployment(namespace, name, database, user, password))
-		Expect(err).ToNot(HaveOccurred())
-	}
+
+	err = suiteCtx.K8sClient.Create(context.TODO(), databaseDeployment)
+	Expect(err).ToNot(HaveOccurred())
+
 	err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlService(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
 
@@ -187,7 +202,8 @@ func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 	kubernetescli.GetPods(namespace)
 }
 
-func postgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+func deployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+	// registry.redhat.io/rhel8/postgresql-12:1
 	labels := map[string]string{"app": name}
 	var replicas int32 = 1
 	return &v1.Deployment{
@@ -208,29 +224,23 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name: name,
-							// Image: "centos/postgresql-10-centos7:20200917-804ef01",
-							// Image: "quay.io/debezium/example-postgres:1.2",
-							// Image: "quay.io/debezium/postgres:10",
-							Image: "quay.io/debezium/postgres:12",
+							Name:  name,
+							Image: "registry.redhat.io/rhel8/postgresql-12:1",
 							Env: []corev1.EnvVar{
-								// {
-								// 	Name:  "POSTGRESQL_ADMIN_PASSWORD",
-								// 	Value: "admin1234",
-								// },
 								{
-									// Name:  "POSTGRESQL_DATABASE",
-									Name:  "POSTGRES_DB",
+									Name:  "POSTGRESQL_ADMIN_PASSWORD",
+									Value: "admin1234",
+								},
+								{
+									Name:  "POSTGRESQL_DATABASE",
 									Value: database,
 								},
 								{
-									// Name:  "POSTGRESQL_PASSWORD",
-									Name:  "POSTGRES_PASSWORD",
+									Name:  "POSTGRESQL_PASSWORD",
 									Value: password,
 								},
 								{
-									// Name:  "POSTGRESQL_USER",
-									Name:  "POSTGRES_USER",
+									Name:  "POSTGRESQL_USER",
 									Value: user,
 								},
 							},
@@ -261,8 +271,7 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
-									// MountPath: "/var/lib/pgsql/data",
-									MountPath: "/var/lib/postgresql/data",
+									MountPath: "/var/lib/pgsql/data",
 									Name:      name,
 								},
 							},
@@ -284,7 +293,7 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 	}
 }
 
-func openshiftPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+func debeziumPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
 	labels := map[string]string{"app": name}
 	var replicas int32 = 1
 	var readinessProbe string = "PGPASSWORD=" + password + " /usr/bin/psql -w -U " + user + " -d " + database + " -c 'SELECT 1'"
