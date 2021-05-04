@@ -203,7 +203,6 @@ func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 }
 
 func deployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
-	// registry.redhat.io/rhel8/postgresql-12:1
 	labels := map[string]string{"app": name}
 	var replicas int32 = 1
 	return &v1.Deployment{
@@ -225,7 +224,7 @@ func deployment(namespace string, name string, database string, user string, pas
 					Containers: []corev1.Container{
 						{
 							Name:  name,
-							Image: "registry.redhat.io/rhel8/postgresql-12:1",
+							Image: "quay.io/centos7/postgresql-12-centos7:1",
 							Env: []corev1.EnvVar{
 								{
 									Name:  "POSTGRESQL_ADMIN_PASSWORD",
