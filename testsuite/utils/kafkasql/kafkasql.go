@@ -354,6 +354,8 @@ func DeployKafkaConnect(suiteCtx *types.SuiteContext, kafkaClusterInfo *types.Ka
 	log.Info("Deploying kafka connect " + kafkaClusterInfo.Name)
 	kubernetescli.Execute("apply", "-f", kafkaClusterManifest, "-n", kafkaClusterInfo.Namespace)
 
+	//TODO finish this
+
 	//wait for kafka connect
 	//TODO make this timeout configurable
 	timeout := 10 * time.Minute

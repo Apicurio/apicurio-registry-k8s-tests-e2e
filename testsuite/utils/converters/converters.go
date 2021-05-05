@@ -45,12 +45,12 @@ var databasePassword = "testpwd"
 func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 
 	apicurioDebeziumImage := &types.OcpImageReference{
-		ExternalImage: "localhost:5000/apicurio-debezium:latest",
-		InternalImage: "localhost:5000/apicurio-debezium:latest",
+		ExternalImage: "localhost:5000/apicurio-debezium:latest-ci",
+		InternalImage: "localhost:5000/apicurio-debezium:latest-ci",
 	}
 
 	if suiteCtx.IsOpenshift {
-		apicurioDebeziumImage = openshift.OcpInternalImage(suiteCtx, testContext.RegistryNamespace, "apicurio-debezium", "latest")
+		apicurioDebeziumImage = openshift.OcpInternalImage(suiteCtx, testContext.RegistryNamespace, "apicurio-debezium", "latest-ci")
 	}
 
 	if utils.ConvertersURL != "" {
@@ -71,7 +71,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 		testContext.RegisterCleanup(kafkaCleanup)
 	}
 
-	sql.DeployPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
+	sql.DeployDebeziumPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
 		sql.RemovePostgresqlDatabase(suiteCtx.K8sClient, suiteCtx.Clientset, testContext.RegistryNamespace, databaseName)
 	}

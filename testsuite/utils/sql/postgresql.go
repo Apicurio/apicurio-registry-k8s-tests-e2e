@@ -92,19 +92,35 @@ type DbData struct {
 	DataSourceURL string
 }
 
+//DeployDebeziumPostgresqlDatabase deploys a postgresql database specifically configured to work with debezium
+func DeployDebeziumPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
+	log.Info("Deploying postgresql database for Debezium " + name)
+
+	var d *v1.Deployment
+	if suiteCtx.IsOpenshift {
+		d = debeziumOpenshiftPostgresqlDeployment(namespace, name, database, user, password)
+	} else {
+		d = debeziumKubernetesPostgresqlDeployment(namespace, name, database, user, password)
+	}
+
+	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, d)
+}
+
 //DeployPostgresqlDatabase deploys a postgresql database
 func DeployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string) *DbData {
+	var d *v1.Deployment = deployment(namespace, name, database, user, password)
+	return deployPostgresqlDatabase(suiteCtx, namespace, name, database, user, password, d)
+}
+
+func deployPostgresqlDatabase(suiteCtx *types.SuiteContext, namespace string, name string, database string, user string, password string, databaseDeployment *v1.Deployment) *DbData {
 	log.Info("Deploying postgresql database " + name)
 
 	err := suiteCtx.K8sClient.Create(context.TODO(), postgresqlPersistentVolumeClaim(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
-	if suiteCtx.IsOpenshift {
-		err = suiteCtx.K8sClient.Create(context.TODO(), openshiftPostgresqlDeployment(namespace, name, database, user, password))
-		Expect(err).ToNot(HaveOccurred())
-	} else {
-		err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlDeployment(namespace, name, database, user, password))
-		Expect(err).ToNot(HaveOccurred())
-	}
+
+	err = suiteCtx.K8sClient.Create(context.TODO(), databaseDeployment)
+	Expect(err).ToNot(HaveOccurred())
+
 	err = suiteCtx.K8sClient.Create(context.TODO(), postgresqlService(namespace, name))
 	Expect(err).ToNot(HaveOccurred())
 
@@ -187,7 +203,172 @@ func RemovePostgresqlDatabase(k8sclient client.Client, clientset *kubernetes.Cli
 	kubernetescli.GetPods(namespace)
 }
 
-func postgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+func deployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+	labels := map[string]string{"app": name}
+	var replicas int32 = 1
+	return &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:    labels,
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  name,
+							Image: "quay.io/centos7/postgresql-12-centos7:1",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "POSTGRESQL_ADMIN_PASSWORD",
+									Value: "admin1234",
+								},
+								{
+									Name:  "POSTGRESQL_DATABASE",
+									Value: database,
+								},
+								{
+									Name:  "POSTGRESQL_PASSWORD",
+									Value: password,
+								},
+								{
+									Name:  "POSTGRESQL_USER",
+									Value: user,
+								},
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 5432,
+									Name:          "postgresql",
+									Protocol:      "TCP",
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 5,
+								PeriodSeconds:       10,
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 15,
+								PeriodSeconds:       20,
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									MountPath: "/var/lib/pgsql/data",
+									Name:      name,
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: name,
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: name,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func debeziumOpenshiftPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
+	labels := map[string]string{"app": name}
+	var replicas int32 = 1
+	var readinessProbe string = "PGPASSWORD=" + password + " /usr/bin/psql -w -U " + user + " -d " + database + " -c 'SELECT 1'"
+	return &v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels:    labels,
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            name,
+							Image:           "quay.io/debezium/example-postgres-ocp:latest",
+							ImagePullPolicy: corev1.PullAlways,
+							Env: []corev1.EnvVar{
+								{
+									Name:  "POSTGRESQL_DATABASE",
+									Value: database,
+								},
+								{
+									Name:  "POSTGRESQL_PASSWORD",
+									Value: password,
+								},
+								{
+									Name:  "POSTGRESQL_USER",
+									Value: user,
+								},
+							},
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 5432,
+									Name:          "postgresql",
+									Protocol:      "TCP",
+								},
+							},
+							ReadinessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									Exec: &corev1.ExecAction{
+										Command: []string{"/bin/sh", "-i", "-c", readinessProbe},
+									},
+								},
+								InitialDelaySeconds: 5,
+								TimeoutSeconds:      1,
+							},
+							LivenessProbe: &corev1.Probe{
+								Handler: corev1.Handler{
+									TCPSocket: &corev1.TCPSocketAction{
+										Port: intstr.FromInt(5432),
+									},
+								},
+								InitialDelaySeconds: 30,
+								TimeoutSeconds:      1,
+							},
+							TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+							TerminationMessagePath:   "/dev/termination-log",
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyAlways,
+				},
+			},
+		},
+	}
+}
+
+func debeziumKubernetesPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
 	labels := map[string]string{"app": name}
 	var replicas int32 = 1
 	return &v1.Deployment{
@@ -278,81 +459,6 @@ func postgresqlDeployment(namespace string, name string, database string, user s
 							},
 						},
 					},
-				},
-			},
-		},
-	}
-}
-
-func openshiftPostgresqlDeployment(namespace string, name string, database string, user string, password string) *v1.Deployment {
-	labels := map[string]string{"app": name}
-	var replicas int32 = 1
-	var readinessProbe string = "PGPASSWORD=" + password + " /usr/bin/psql -w -U " + user + " -d " + database + " -c 'SELECT 1'"
-	return &v1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels:    labels,
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: v1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: labels,
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:            name,
-							Image:           "quay.io/debezium/example-postgres-ocp:latest",
-							ImagePullPolicy: corev1.PullAlways,
-							Env: []corev1.EnvVar{
-								{
-									Name:  "POSTGRESQL_DATABASE",
-									Value: database,
-								},
-								{
-									Name:  "POSTGRESQL_PASSWORD",
-									Value: password,
-								},
-								{
-									Name:  "POSTGRESQL_USER",
-									Value: user,
-								},
-							},
-							Ports: []corev1.ContainerPort{
-								{
-									ContainerPort: 5432,
-									Name:          "postgresql",
-									Protocol:      "TCP",
-								},
-							},
-							ReadinessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									Exec: &corev1.ExecAction{
-										Command: []string{"/bin/sh", "-i", "-c", readinessProbe},
-									},
-								},
-								InitialDelaySeconds: 5,
-								TimeoutSeconds:      1,
-							},
-							LivenessProbe: &corev1.Probe{
-								Handler: corev1.Handler{
-									TCPSocket: &corev1.TCPSocketAction{
-										Port: intstr.FromInt(5432),
-									},
-								},
-								InitialDelaySeconds: 30,
-								TimeoutSeconds:      1,
-							},
-							TerminationMessagePolicy: corev1.TerminationMessageReadFile,
-							TerminationMessagePath:   "/dev/termination-log",
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyAlways,
 				},
 			},
 		},
