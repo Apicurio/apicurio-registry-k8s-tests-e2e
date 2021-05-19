@@ -20,7 +20,7 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
-BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/default-install.yaml
+BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
