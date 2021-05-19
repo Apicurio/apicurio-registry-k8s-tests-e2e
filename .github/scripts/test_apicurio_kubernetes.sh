@@ -3,7 +3,7 @@ set -e -a
 
 make pull-apicurio-registry build-apicurio-registry
 
-./scripts/install_kind.sh
+./scripts/setup-deps.sh
 
 if [ "$E2E_APICURIO_TESTS_PROFILE" == "upgrade" ]
 then

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e -a
 
-./scripts/install_kind.sh
+./scripts/setup-deps.sh
 
 make run-operator-ci
 
