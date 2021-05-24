@@ -22,6 +22,7 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
+OPERATOR_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator
 
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
 
@@ -74,7 +75,7 @@ send-ci-message:
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
 create-catalog-source-image:
 ifeq ($(CI_BUILD),true)
-	cd apicurio-registry-operator; make BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(OPERATOR_IMAGE) bundle-build bundle-push
+	cd $(OPERATOR_PROJECT_DIR); make BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(OPERATOR_IMAGE) bundle-build bundle-push
 endif
 	opm index add --bundles $(OPERATOR_METADATA_IMAGE) --tag $(CATALOG_SOURCE_IMAGE) --skip-tls --permissive -c docker
 
