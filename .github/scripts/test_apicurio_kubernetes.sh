@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e -a
 
-make pull-apicurio-registry build-apicurio-registry
-
 ./scripts/setup-deps.sh
+
+make pull-operator-repo pull-apicurio-registry build-apicurio-registry
 
 if [ "$E2E_APICURIO_TESTS_PROFILE" == "upgrade" ]
 then

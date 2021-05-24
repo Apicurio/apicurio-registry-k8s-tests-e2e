@@ -52,13 +52,13 @@ STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/d
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
 # CI
-run-operator-ci: create-summary-file kind-start kind-setup-olm pull-operator-repo setup-operator-deps run-operator-tests
+run-operator-ci: create-summary-file kind-start kind-setup-olm setup-operator-deps run-operator-tests
 
-run-apicurio-base-ci: create-summary-file kind-start pull-operator-repo setup-apicurio-deps
+run-apicurio-base-ci: create-summary-file kind-start setup-apicurio-deps
 
 run-apicurio-ci: run-apicurio-base-ci run-apicurio-tests
 
-run-upgrade-ci: create-summary-file kind-start kind-setup-olm pull-operator-repo kind-catalog-source-img run-upgrade-tests
+run-upgrade-ci: create-summary-file kind-start kind-setup-olm kind-catalog-source-img run-upgrade-tests
 
 CI_MESSAGE_HEADER?=Tests executed
 SUMMARY_FILE=$(E2E_SUITE_PROJECT_DIR)/tests-logs/TESTS_SUMMARY.json
