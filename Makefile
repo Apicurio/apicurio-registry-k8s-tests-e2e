@@ -72,10 +72,12 @@ create-summary-file:
 send-ci-message:
 	./scripts/send-ci-message.sh $(SUMMARY_FILE)
 
+CI_BUILD_OPERATOR_IMAGE=localhost:5000/apicurio-registry-operator:latest-ci
+
 # note there is no need to push CATALOG_SOURCE_IMAGE to docker hub
 create-catalog-source-image:
 ifeq ($(CI_BUILD),true)
-	cd $(OPERATOR_PROJECT_DIR); make BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(OPERATOR_IMAGE) bundle-build bundle-push
+	cd $(OPERATOR_PROJECT_DIR); make BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(CI_BUILD_OPERATOR_IMAGE) bundle-build bundle-push
 endif
 	opm index add --bundles $(OPERATOR_METADATA_IMAGE) --tag $(CATALOG_SOURCE_IMAGE) --skip-tls --permissive -c docker
 
@@ -83,9 +85,9 @@ kind-catalog-source-img: create-catalog-source-image
 	docker push $(CATALOG_SOURCE_IMAGE)
 
 kind-load-operator-images:
-	docker tag $(OPERATOR_IMAGE) localhost:5000/apicurio-registry-operator:latest-ci
-	docker push localhost:5000/apicurio-registry-operator:latest-ci
-	sed -i "s#quay.io/apicurio/apicurio-registry-operator.*#localhost:5000/apicurio-registry-operator:latest-ci#" $(E2E_OPERATOR_BUNDLE_PATH)
+	docker tag $(OPERATOR_IMAGE) $(CI_BUILD_OPERATOR_IMAGE)
+	docker push $(CI_BUILD_OPERATOR_IMAGE)
+	sed -i "s#quay.io/apicurio/apicurio-registry-operator.*#$(CI_BUILD_OPERATOR_IMAGE)#" $(E2E_OPERATOR_BUNDLE_PATH)
 
 setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images) kind-catalog-source-img
 
