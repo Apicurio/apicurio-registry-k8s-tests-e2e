@@ -23,13 +23,17 @@ var log = logf.Log.WithName("testcase")
 
 //CommonTestCases declares a common set of ginkgo testcases that olm and operator bundle testsuites share
 func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
+	var size types.DeploymentSize = types.NormalSize
+	if !suiteCtx.IsOpenshift {
+		size = types.SmallSize
+	}
 	var _ = DescribeTable("registry deployment",
 		func(testContext *types.TestContext) {
 			executeTestCase(suiteCtx, testContext)
 		},
 
-		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace}),
-		Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace}),
+		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace, Size: size}),
+		Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace, Size: size}),
 	)
 
 	if suiteCtx.OnlyTestOperator {
