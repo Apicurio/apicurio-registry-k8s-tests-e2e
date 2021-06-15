@@ -82,7 +82,7 @@ func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 }
 
 func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace string) {
-	timeout := 160 * time.Second
+	timeout := 540 * time.Second
 	log.Info("Waiting for operator to be deployed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
@@ -101,7 +101,7 @@ func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace s
 }
 
 func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace string) {
-	timeout := 60 * time.Second
+	timeout := 90 * time.Second
 	log.Info("Waiting for operator to be removed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := clientset.AppsV1().Deployments(namespace).Get(utils.OperatorDeploymentName, metav1.GetOptions{})
