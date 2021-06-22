@@ -5,7 +5,7 @@ metadata:
   namespace: {NAMESPACE}
 spec:
   kafka:
-    version: 2.5.0
+    version: 2.7.0
     replicas: {REPLICAS}
     listeners:
     #   plain: {}
@@ -18,7 +18,7 @@ spec:
       offsets.topic.replication.factor: {REPLICAS}
       transaction.state.log.replication.factor: {REPLICAS}
       transaction.state.log.min.isr: {MIN_ISR}
-      log.message.format.version: "2.5"
+      log.message.format.version: "2.7"
     storage:
       type: persistent-claim
       size: 100Gi
