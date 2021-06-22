@@ -1,4 +1,4 @@
-apiVersion: kafka.strimzi.io/v1beta1
+apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: {NAME}
@@ -8,16 +8,24 @@ spec:
     version: 2.7.0
     replicas: 1
     listeners:
-      plain: {}
-      tls: {}
-      external:
-        type: ingress
-        configuration:
-          bootstrap:
-            host: {BOOTSTRAP_HOST}
-          brokers:
-          - broker: 0
-            host: {BROKER_HOST}
+    - name: plain
+      port: 9092
+      type: internal
+      tls: false
+    - name: tls
+      port: 9093
+      type: internal
+      tls: true
+    - name: external
+      port: 9094
+      type: ingress
+      tls: true
+      configuration:
+        bootstrap:
+          host: {BOOTSTRAP_HOST}
+        brokers:
+        - broker: 0
+          host: {BROKER_HOST}
     config:
       offsets.topic.replication.factor: 1
       transaction.state.log.replication.factor: 1
