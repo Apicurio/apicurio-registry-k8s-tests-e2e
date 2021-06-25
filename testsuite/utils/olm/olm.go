@@ -55,7 +55,7 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 	}, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 300 * time.Second
+	timeout := 500 * time.Second
 	log.Info("Waiting for catalog source", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(context.TODO(), catalogSourceName, metav1.GetOptions{})
@@ -72,6 +72,9 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 		kubernetescli.Execute("get", "catalogsource", catalogSourceName, "-n", catalogSourceNamespace, "-o", "yaml")
 	}
 	Expect(err).ToNot(HaveOccurred())
+
+	time.Sleep(180 * time.Second)
+	kubernetescli.GetPods(catalogSourceNamespace)
 
 	return catalog
 }
