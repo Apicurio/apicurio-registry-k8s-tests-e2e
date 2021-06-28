@@ -59,13 +59,16 @@ func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
 	} else {
 		var _ = DescribeTable("clustered registry",
 			func(testContext *types.TestContext) {
+				if !suiteCtx.IsOpenshift && testContext.Storage == utils.StorageKafkaSql {
+					//FIXME skipping this out temporarily because of weird ImagePullBackOff errors when running the second testcase
+					//TODO investigate some more
+					return
+				}
 				executeTestCase(suiteCtx, testContext)
 			},
 
 			Entry("sql", &types.TestContext{Storage: utils.StorageSql, Replicas: 3}),
-			//FIXME commenting this out temporarily because of weird ImagePullBackOff errors when running the second testcase
-			//TODO investigate or at least just run this in openshift
-			// Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, Replicas: 3, RegistryNamespace: namespace}),
+			Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, Replicas: 3, RegistryNamespace: namespace}),
 		)
 	}
 

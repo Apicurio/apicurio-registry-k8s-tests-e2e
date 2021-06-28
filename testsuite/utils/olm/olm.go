@@ -55,7 +55,7 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 	}, metav1.CreateOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
-	timeout := 500 * time.Second
+	timeout := 200 * time.Second
 	log.Info("Waiting for catalog source", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		_, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(context.TODO(), catalogSourceName, metav1.GetOptions{})
@@ -73,8 +73,74 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 	}
 	Expect(err).ToNot(HaveOccurred())
 
-	time.Sleep(180 * time.Second)
+	timeout = 90 * time.Second
+	log.Info("Waiting for catalog source pod", "timeout", timeout)
+	wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		labelsSet := labels.Set(map[string]string{"olm.catalogSource": catalogSourceName})
+
+		pods, err := suiteCtx.Clientset.CoreV1().Pods(catalogSourceNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			return false, nil
+		}
+		return true, nil
+	})
 	kubernetescli.GetPods(catalogSourceNamespace)
+	time.Sleep(10 * time.Second)
+	if suiteCtx.IsOpenshift {
+		labelsSet := labels.Set(map[string]string{"olm.catalogSource": catalogSourceName})
+		err := suiteCtx.Clientset.CoreV1().Pods(catalogSourceNamespace).DeleteCollection(context.TODO(),
+			metav1.DeleteOptions{},
+			metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+
+		Expect(err).ToNot(HaveOccurred())
+	}
+	kubernetescli.GetPods(catalogSourceNamespace)
+
+	timeout = 120 * time.Second
+	log.Info("Waiting for catalog source pod ready", "timeout", timeout)
+	wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		labelsSet := labels.Set(map[string]string{"olm.catalogSource": catalogSourceName})
+
+		pods, err := suiteCtx.Clientset.CoreV1().Pods(catalogSourceNamespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelsSet.AsSelector().String()})
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			return false, nil
+		}
+		allPodsReady := true
+		for _, p := range pods.Items {
+			podReady := false
+			if p.Status.ContainerStatuses != nil && len(p.Status.ContainerStatuses) > 0 {
+				podReady = p.Status.ContainerStatuses[0].Ready
+			}
+			allPodsReady = allPodsReady && podReady
+		}
+		return allPodsReady, nil
+	})
+
+	kubernetescli.GetPods(catalogSourceNamespace)
+
+	timeout = 300 * time.Second
+	log.Info("Waiting for catalog source ready", "timeout", timeout)
+	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+		c, err := suiteCtx.OLMClient.OperatorsV1alpha1().CatalogSources(catalogSourceNamespace).Get(context.TODO(), catalogSourceName, metav1.GetOptions{})
+		if err != nil {
+			if kubeerrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return c.Status.GRPCConnectionState.LastObservedState == "READY", nil
+	})
+	kubernetescli.GetPods(catalogSourceNamespace)
+	if err != nil {
+		kubernetescli.Execute("get", "catalogsource", catalogSourceName, "-n", catalogSourceNamespace, "-o", "yaml")
+	}
+	Expect(err).ToNot(HaveOccurred())
 
 	return catalog
 }
