@@ -17,10 +17,12 @@ const (
 	convertersURLEnvVar             = "E2E_CONVERTERS_URL"
 	convertersDistroSha512SumEnvVar = "E2E_CONVERTERS_SHA512SUM"
 
+	oLMUseDefaultCatalogSourceEnvVar       = "E2E_OLM_USE_DEFAULT_CATALOG_SOURCE"       //optional
 	oLMCatalogSourceImageEnvVar            = "E2E_OLM_CATALOG_SOURCE_IMAGE"             //mandatory env var for olm tests
 	oLMCatalogSourceNamespaceEnvVar        = "E2E_OLM_CATALOG_SOURCE_NAMESPACE"         //mandatory env var for olm tests
 	oLMApicurioPackageManifestNameEnvVar   = "E2E_OLM_PACKAGE_MANIFEST_NAME"            //mandatory env var for olm tests
 	oLMApicurioChannelNameEnvVar           = "E2E_OLM_CHANNEL"                          //mandatory env var for olm tests
+	oLMApicurioCSVEnvVar                   = "E2E_OLM_CSV"                              //optional
 	oLMClusterWideOperatorsNamespaceEnvVar = "E2E_OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE" //mandatory env var for olm tests
 
 	oLMUpgradeChannelEnvVar             = "E2E_OLM_UPGRADE_CHANNEL"
@@ -67,6 +69,9 @@ var ApicurioTestsProfile string = os.Getenv(apicurioTestsProfileEnvVar)
 //StrimziOperatorBundlePath value of StrimziOperatorBundlePathEnvVar
 var StrimziOperatorBundlePath string = os.Getenv(strimziOperatorBundlePathEnvVar)
 
+//OLMUseDefaultCatalogSource value of oLMUseDefaultCatalogSourceEnvVar
+var OLMUseDefaultCatalogSource string = os.Getenv(oLMUseDefaultCatalogSourceEnvVar)
+
 //OLMCatalogSourceNamespace value of OLMCatalogSourceNamespaceEnvVar
 var OLMCatalogSourceNamespace string = os.Getenv(oLMCatalogSourceNamespaceEnvVar)
 
@@ -75,6 +80,9 @@ var OLMApicurioPackageManifestName string = os.Getenv(oLMApicurioPackageManifest
 
 //OLMApicurioChannelName value of oLMApicurioChannelNameEnvVar
 var OLMApicurioChannelName string = os.Getenv(oLMApicurioChannelNameEnvVar)
+
+//OLMApicurioCSV value of oLMApicurioCSVEnvVar
+var OLMApicurioCSV string = os.Getenv(oLMApicurioCSVEnvVar)
 
 //OLMClusterWideOperatorsNamespace value of OLMClusterWideOperatorsNamespaceEnvVar
 var OLMClusterWideOperatorsNamespace string = os.Getenv(oLMClusterWideOperatorsNamespaceEnvVar)
