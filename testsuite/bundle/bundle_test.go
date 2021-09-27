@@ -22,7 +22,7 @@ var operatorNamespace string = utils.OperatorNamespace
 var _ = Describe("bundle installation", func() {
 
 	testcase.CommonTestCases(suiteCtx, operatorNamespace)
-	testcase.BundleOnlyTestCases(suiteCtx, operatorNamespace)
+	testcase.AdvancedTestCases(suiteCtx, operatorNamespace)
 
 })
 

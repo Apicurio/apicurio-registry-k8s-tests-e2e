@@ -89,10 +89,11 @@ type SuiteContext struct {
 
 	CLIKubernetesClient *kubernetescli.KubernetesClient
 
-	OnlyTestOperator       bool
-	DisableClusteredTests  bool
-	DisableConvertersTests bool
-	DisableAuthTests       bool
+	OnlyTestOperator        bool
+	DisableClusteredTests   bool
+	DisableConvertersTests  bool
+	DisableAuthTests        bool
+	OLMRunAdvancedTestcases bool
 
 	SetupSelenium bool
 	SeleniumHost  string

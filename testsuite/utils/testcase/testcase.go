@@ -51,7 +51,7 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 }
 
 //BundleOnlyTestCases contains test cases that will be only executed for operator bundle installation
-func BundleOnlyTestCases(suiteCtx *types.SuiteContext, namespace string) {
+func AdvancedTestCases(suiteCtx *types.SuiteContext, namespace string) {
 
 	if suiteCtx.DisableClusteredTests {
 		log.Info("Ignoring clustered registry tests")

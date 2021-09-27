@@ -35,6 +35,7 @@ var setupSelenium bool
 var disableClusteredTests bool
 var disableConvertersTests bool
 var disableAuthTests bool
+var olmRunAdvancedTestcases bool
 
 //SetFlags call this function on init function on test suite package
 func SetFlags() {
@@ -43,6 +44,7 @@ func SetFlags() {
 	flag.BoolVar(&disableClusteredTests, "disable-clustered-tests", false, "to disable tests for clustered registry deployments")
 	flag.BoolVar(&disableConvertersTests, "disable-converters-tests", false, "to disable tests for kafka connect converters")
 	flag.BoolVar(&disableAuthTests, "disable-auth-tests", false, "to disable tests for keycloak authentication")
+	flag.BoolVar(&olmRunAdvancedTestcases, "enable-olm-advanced-tests", false, "to enable advanced tests for OLM testsuite")
 }
 
 //NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
@@ -68,6 +70,11 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 	suiteCtx.DisableAuthTests = disableAuthTests
 	if suiteCtx.DisableAuthTests {
 		log.Info("Keycloak Authentication tests disabled")
+	}
+
+	suiteCtx.OLMRunAdvancedTestcases = olmRunAdvancedTestcases
+	if suiteCtx.OLMRunAdvancedTestcases {
+		log.Info("Running Advanced Testcases with OLM deployment")
 	}
 
 	suiteCtx.SetupSelenium = setupSelenium

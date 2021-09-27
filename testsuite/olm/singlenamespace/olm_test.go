@@ -7,4 +7,7 @@ import (
 
 var _ = Describe("olm installation", func() {
 	testcase.CommonTestCases(suiteCtx, operatorNamespace)
+	if suiteCtx.OLMRunAdvancedTestcases {
+		testcase.AdvancedTestCases(suiteCtx, operatorNamespace)
+	}
 })
