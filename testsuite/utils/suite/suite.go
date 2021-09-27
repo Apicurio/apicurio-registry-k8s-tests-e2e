@@ -2,19 +2,15 @@ package suite
 
 import (
 	"flag"
-	"fmt"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 
 	ocp_route_client "github.com/openshift/client-go/route/clientset/versioned/typed/route/v1"
 
@@ -160,13 +156,5 @@ func RunSuite(t *testing.T, suiteName string, suiteCtx *types.SuiteContext) {
 
 	RegisterFailHandler(Fail)
 
-	junitReporter := reporters.NewJUnitReporter(fmt.Sprintf(utils.SuiteProjectDir+"/tests-logs/"+suiteCtx.SuiteID+"/TEST-ginkgo-junit_%s.xml", time.Now().Format("20060102150405")))
-
-	r := []Reporter{printer.NewlineReporter{}, junitReporter}
-
-	// if utils.SummaryFile != "" {
-	// 	r = append(r, customreporters.NewTextSummaryReporter(utils.SummaryFile))
-	// }
-
-	RunSpecsWithDefaultAndCustomReporters(t, suiteName, r)
+	RunSpecs(t, suiteName)
 }

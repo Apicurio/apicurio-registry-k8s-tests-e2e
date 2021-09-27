@@ -31,16 +31,14 @@ var olminfo *olm.OLMInstallationInfo
 
 var operatorNamespace string = utils.OperatorNamespace
 
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func() {
 
 	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
 	olminfo = olm.InstallOperatorOLM(suiteCtx, operatorNamespace, false)
 
-	close(done)
-
-}, 15*60)
+})
 
 var _ = AfterSuite(func() {
 
@@ -48,4 +46,4 @@ var _ = AfterSuite(func() {
 
 	suite.TearDownSuite(suiteCtx)
 
-}, 5*60)
+})

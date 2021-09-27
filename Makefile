@@ -54,24 +54,15 @@ STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/d
 export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
 
 # CI
-run-operator-ci: create-summary-file kind-start kind-setup-olm setup-operator-deps run-operator-tests
+run-operator-ci: kind-start kind-setup-olm setup-operator-deps run-operator-tests
 
-run-apicurio-base-ci: create-summary-file kind-start setup-apicurio-deps
+run-apicurio-base-ci: kind-start setup-apicurio-deps
 
 run-apicurio-ci: run-apicurio-base-ci run-apicurio-tests
 
-run-upgrade-ci: create-summary-file kind-start kind-setup-olm kind-catalog-source-img run-upgrade-tests
+run-upgrade-ci: kind-start kind-setup-olm kind-catalog-source-img run-upgrade-tests
 
-CI_MESSAGE_HEADER?=Tests executed
-SUMMARY_FILE=$(E2E_SUITE_PROJECT_DIR)/tests-logs/TESTS_SUMMARY.json
-export E2E_SUMMARY_FILE=$(SUMMARY_FILE)
-create-summary-file:
-	rm $(SUMMARY_FILE) || true
-	mkdir -p $(E2E_SUITE_PROJECT_DIR)/tests-logs
-	cat $(E2E_SUITE_PROJECT_DIR)/scripts/CI_MESSAGE.json | sed -e 's/TEMPLATE/$(CI_MESSAGE_HEADER)/' > $(SUMMARY_FILE)
-
-send-ci-message:
-	./scripts/send-ci-message.sh $(SUMMARY_FILE)
+run-operator-simple: kind-start run-operator-tests/only-bundle
 
 CI_BUILD_OPERATOR_IMAGE=localhost:5000/apicurio-registry-operator:latest-ci
 
@@ -146,68 +137,73 @@ kind-setup-olm:
 
 # we run olm tests only for operator testsuite
 run-operator-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
-		--cover --trace --race --progress -v ./testsuite/bundle ./testsuite/olm -- -only-test-operator -disable-clustered-tests
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
+		--junit-report=xunit-report.xml \
+		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle ./testsuite/olm -- -only-test-operator -disable-clustered-tests
+
+run-operator-tests/only-bundle:
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
+		--cover --trace --race --progress -v --focus="scram" ./testsuite/bundle -- -only-test-operator -disable-clustered-tests
 
 # for apicurio-registry tests we mostly focus on registry functionality so there is no need to run olm tests as well
 run-apicurio-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v ./testsuite/bundle -- -disable-clustered-tests
 
 run-apicurio-tests-with-clustered-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v ./testsuite/bundle
 
 run-upgrade-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v ./testsuite/upgrade
 
 run-security-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="security" ./testsuite/bundle -- -only-test-operator
 
 run-keycloak-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="keycloak" ./testsuite/bundle -- -only-test-operator
 
 run-migration-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="migration" ./testsuite/bundle
 
 run-clustered-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="clustered" ./testsuite/bundle
 
 run-converters-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="converters" ./testsuite/bundle
 
 run-backupandrestore-test:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="backup" ./testsuite/bundle
 
 run-sql-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="sql" ./testsuite/bundle -- -only-test-operator -disable-clustered-tests
 
 run-kafkasql-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="kafkasql" ./testsuite/bundle
 
 run-olm-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator
 
 example-run-sql-and-kafkasql-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="sql|kafkasql" -dryRun
 
 example-run-sql-with-olm-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="olm.*sql" -dryRun
 
 example-run-sql-with-olm-and-upgrade-tests:
-	$(GINKGO_CMD) -r --randomizeAllSpecs --randomizeSuites --failOnPending -keepGoing \
+	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--cover --trace --race --progress -v --focus="olm.*sql|upgrade" -dryRun
 
 clean-tests-logs:

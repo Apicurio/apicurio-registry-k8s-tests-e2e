@@ -22,6 +22,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.8'
+      - run: go version
+
       - name: Set up JDK 11
         uses: AdoptOpenJDK/install-jdk@v1
         with:
@@ -41,9 +46,3 @@ jobs:
         with:
           name: tests-logs
           path: artifacts
-
-      # - name: Send CI message
-      #   if: github.event_name == 'schedule'
-      #   env:
-      #     CI_MESSAGES_ENDPOINT: ${{ secrets.CI_MESSAGES_ENDPOINT }}
-      #   run: make send-ci-message

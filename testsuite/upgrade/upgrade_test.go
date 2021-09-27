@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/operator-framework/api/pkg/operators/v1alpha1"
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
