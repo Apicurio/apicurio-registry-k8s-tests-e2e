@@ -27,7 +27,8 @@ OPERATOR_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator
 OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.0.0-dev
 
 # olm variables
-export E2E_OLM_PACKAGE_MANIFEST_NAME=apicurio-registry-operator
+OLM_PACKAGE_MANIFEST_NAME?=apicurio-registry-operator
+export E2E_OLM_PACKAGE_MANIFEST_NAME=$(OLM_PACKAGE_MANIFEST_NAME)
 # OLM Channel ommited, default channel will be used
 # OLM_CHANNEL?=apicurio-registry-2.x
 # export E2E_OLM_CHANNEL=$(OLM_CHANNEL)
