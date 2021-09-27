@@ -25,17 +25,15 @@ func TestApicurioE2E(t *testing.T) {
 	suite.RunSuite(t, "Operator Upgrade Testsuite", suiteCtx)
 }
 
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func() {
 
 	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
-	close(done)
-
-}, 15*60)
+})
 
 var _ = AfterSuite(func() {
 
 	suite.TearDownSuite(suiteCtx)
 
-}, 5*60)
+})

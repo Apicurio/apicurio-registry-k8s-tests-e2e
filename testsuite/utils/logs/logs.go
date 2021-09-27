@@ -74,16 +74,22 @@ func PrintSeparator() {
 }
 
 func SaveLogs(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	testDescription := CurrentGinkgoTestDescription()
+	testDescription := CurrentSpecReport()
 
 	testName := ""
-	for _, comp := range testDescription.ComponentTexts {
-		testName += (comp + "-")
+	if len(testDescription.ContainerHierarchyTexts) != 0 {
+		for _, comp := range testDescription.ContainerHierarchyTexts {
+			testName += (comp + "-")
+		}
+		testName = testName[0 : len(testName)-1]
 	}
-	testName = testName[0 : len(testName)-1]
 
 	if ctx.ID != "" {
-		testName += ("-" + ctx.ID)
+		if len(testName) == 0 {
+			testName = ctx.ID
+		} else {
+			testName += ("-" + ctx.ID)
+		}
 	}
 
 	SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, ctx.RegistryNamespace, testName)

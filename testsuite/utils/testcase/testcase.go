@@ -6,7 +6,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/ginkgo/extensions/table"
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/deploy"

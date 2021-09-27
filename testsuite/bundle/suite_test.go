@@ -25,16 +25,14 @@ func TestApicurioE2E(t *testing.T) {
 	suite.RunSuite(t, "Operator Bundle Testsuite", suiteCtx)
 }
 
-var _ = BeforeSuite(func(done Done) {
+var _ = BeforeSuite(func() {
 
 	suite.InitSuite(suiteCtx)
 	Expect(suiteCtx).ToNot(BeNil())
 
 	installOperator()
 
-	close(done)
-
-}, 5*60)
+})
 
 var _ = AfterSuite(func() {
 
@@ -42,4 +40,4 @@ var _ = AfterSuite(func() {
 
 	suite.TearDownSuite(suiteCtx)
 
-}, 5*60)
+})

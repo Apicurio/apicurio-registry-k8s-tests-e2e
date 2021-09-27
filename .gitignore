@@ -8,3 +8,5 @@ apicurio-registry-operator
 converter-distro.tar.gz
 manifests_replacer.sh
 bundle*
+xunit-report.xml
+coverprofile.out
