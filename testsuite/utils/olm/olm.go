@@ -238,10 +238,6 @@ type OLMInstallationInfo struct {
 
 func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, clusterwide bool) *OLMInstallationInfo {
 
-	if utils.OLMCatalogSourceImage == "" {
-		Expect(errors.New("OLM catalog source image env var is required")).ToNot(HaveOccurred())
-	}
-
 	const operatorSubscriptionName string = "apicurio-registry-sub"
 	const operatorGroupName string = "apicurio-registry-operator-group"
 
@@ -263,6 +259,9 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 	if utils.OLMUseDefaultCatalogSource != "" {
 		catalogSourceName = utils.OLMUseDefaultCatalogSource
 	} else {
+		if utils.OLMCatalogSourceImage == "" {
+			Expect(errors.New("OLM catalog source image env var is required")).ToNot(HaveOccurred())
+		}
 		catalog = CreateCatalogSource(suiteCtx, catalogSourceNamespace, catalogSourceName)
 	}
 
