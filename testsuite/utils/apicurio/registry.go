@@ -3,7 +3,6 @@ package apicurio
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -65,9 +64,16 @@ func CreateRegistryAndWait(suiteCtx *types.SuiteContext, ctx *types.TestContext,
 				return false, err
 			}
 			if len(routes.Items) != 0 && len(routes.Items[0].Status.Ingress) != 0 {
-				//TODO fix this, workaround because operator first fills the host with a non existent url and later on it updates the host with a valid one
-				//I don't know how this happens, if it's the operator updating twice, or if it's ocp changing the route host...
-				return strings.HasSuffix(routes.Items[0].Status.Ingress[0].Host, ".com"), nil
+
+				host := routes.Items[0].Status.Ingress[0].Host
+
+				//the operator first sets the route with a non valid host, and later updates it
+				if (host == (registry.Name + "." + registry.Namespace)) || (host == registry.Name) {
+					return false, nil
+				} else {
+					log.Info("Registry route is ready", "default", registry.Name+"."+registry.Namespace, "ready", host)
+					return true, nil
+				}
 			}
 			return false, nil
 		})
