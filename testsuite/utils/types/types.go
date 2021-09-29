@@ -13,6 +13,7 @@ import (
 	kubernetescli "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetescli"
 
 	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	olmapiversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 	pmversioned "github.com/operator-framework/operator-lifecycle-manager/pkg/package-server/client/clientset/versioned"
@@ -37,10 +38,11 @@ type TestContext struct {
 	RegistryInternalHost string
 	RegistryInternalPort string
 
-	RegistryResource     *apicurio.ApicurioRegistry
-	KafkaClusterInfo     *KafkaClusterInfo
-	KeycloakURL          string
-	KeycloakSubscription *operatorsv1alpha1.Subscription
+	RegistryResource      *apicurio.ApicurioRegistry
+	KafkaClusterInfo      *KafkaClusterInfo
+	KeycloakURL           string
+	KeycloakSubscription  *operatorsv1alpha1.Subscription
+	KeycloakOperatorGroup *operatorsv1.OperatorGroup
 
 	cleanupFunctions []func()
 

@@ -153,6 +153,22 @@ func DeleteCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 	}
 }
 
+func AnyOperatorGroupExists(suiteCtx *types.SuiteContext, operatorNamespace string) bool {
+	log.Info("Checking if operator any group already exists in namespace", "namespace", operatorNamespace)
+	ogs, err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).List(context.TODO(), metav1.ListOptions{})
+	// .Get(context.TODO(), operatorGroupName, metav1.GetOptions{})
+	if err != nil {
+		if kubeerrors.IsNotFound(err) {
+			return false
+		}
+		Expect(err).ToNot(HaveOccurred())
+	}
+	if ogs != nil {
+		return len(ogs.Items) != 0
+	}
+	return false
+}
+
 func CreateOperatorGroup(suiteCtx *types.SuiteContext, operatorNamespace string, operatorGroupName string) *operatorsv1.OperatorGroup {
 	log.Info("Creating operator group")
 	group, err := suiteCtx.OLMClient.OperatorsV1().OperatorGroups(operatorNamespace).Create(context.TODO(), &operatorsv1.OperatorGroup{

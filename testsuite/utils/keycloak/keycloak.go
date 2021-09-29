@@ -23,6 +23,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 
 	apicurio "github.com/Apicurio/apicurio-registry-operator/api/v1"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 )
 
@@ -44,8 +45,9 @@ func KeycloakConfigResource(ctx *types.TestContext) apicurio.ApicurioRegistrySpe
 
 func DeployKeycloak(suiteCtx *types.SuiteContext, ctx *types.TestContext) string {
 
-	keycloakSub := installKeycloakOperator(suiteCtx, ctx.RegistryNamespace)
+	keycloakSub, og := installKeycloakOperator(suiteCtx, ctx.RegistryNamespace)
 	ctx.KeycloakSubscription = keycloakSub
+	ctx.KeycloakOperatorGroup = og
 
 	log.Info("Deploying keycloak server")
 	kubernetescli.Execute("apply", "-f", filepath.Join(utils.SuiteProjectDir, "/kubefiles/keycloak/keycloak.yaml"), "-n", ctx.RegistryNamespace)
@@ -139,14 +141,19 @@ func RemoveKeycloak(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	removeKeycloakOperator(suiteCtx, ctx.RegistryNamespace, ctx.KeycloakSubscription)
+	removeKeycloakOperator(suiteCtx, ctx.RegistryNamespace, ctx.KeycloakSubscription, ctx.KeycloakOperatorGroup)
 }
 
-func installKeycloakOperator(suiteCtx *types.SuiteContext, namespace string) *operatorsv1alpha1.Subscription {
+func installKeycloakOperator(suiteCtx *types.SuiteContext, namespace string) (*operatorsv1alpha1.Subscription, *operatorsv1.OperatorGroup) {
 
 	var operatorGroupName string = namespace + "-operator-group"
 
-	olm.CreateOperatorGroup(suiteCtx, namespace, operatorGroupName)
+	var og *operatorsv1.OperatorGroup = nil
+	if olm.AnyOperatorGroupExists(suiteCtx, namespace) {
+		log.Info("Skipping operator group creation because it already exists")
+	} else {
+		og = olm.CreateOperatorGroup(suiteCtx, namespace, operatorGroupName)
+	}
 
 	subreq := &olm.CreateSubscriptionRequest{
 		SubscriptionNamespace:  namespace,
@@ -154,13 +161,28 @@ func installKeycloakOperator(suiteCtx *types.SuiteContext, namespace string) *op
 		Package:                "keycloak-operator",
 		CatalogSourceName:      "operatorhubio-catalog",
 		CatalogSourceNamespace: "olm",
-		ChannelName:            "alpha",
-		ChannelCSV:             "keycloak-operator.v12.0.3",
+		// ChannelName:            "alpha",
+		// ChannelCSV:             "keycloak-operator.v12.0.3",
 	}
 	if suiteCtx.IsOpenshift {
 		subreq.CatalogSourceName = "community-operators"
 		subreq.CatalogSourceNamespace = "openshift-marketplace"
 	}
+
+	packageManifest, err := suiteCtx.PackageClient.OperatorsV1().PackageManifests(subreq.CatalogSourceNamespace).Get(context.TODO(), subreq.Package, metav1.GetOptions{})
+
+	Expect(err).ToNot(HaveOccurred())
+
+	channelName := packageManifest.Status.DefaultChannel
+	channelCSV := ""
+	for _, channel := range packageManifest.Status.Channels {
+		if channel.Name == channelName {
+			channelCSV = channel.CurrentCSV
+		}
+	}
+
+	subreq.ChannelName = channelName
+	subreq.ChannelCSV = channelCSV
 
 	sub := olm.CreateSubscription(suiteCtx, subreq)
 
@@ -183,9 +205,9 @@ func installKeycloakOperator(suiteCtx *types.SuiteContext, namespace string) *op
 	// kubernetescli.Execute("apply", "-n", namespace, "-f", filepath.Join(operatorDir, "deploy/service_account.yaml"))
 	// kubernetescli.Execute("apply", "-n", namespace, "-f", filepath.Join(operatorDir, "deploy/operator.yaml"))
 
-	timeout := 120 * time.Second
+	timeout := 180 * time.Second
 	log.Info("Waiting for keycloak operator to be ready ", "timeout", timeout)
-	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
+	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
 		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "keycloak-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
@@ -200,15 +222,19 @@ func installKeycloakOperator(suiteCtx *types.SuiteContext, namespace string) *op
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
 
-	return sub
+	return sub, og
 }
 
-func removeKeycloakOperator(suiteCtx *types.SuiteContext, namespace string, sub *operatorsv1alpha1.Subscription) {
+func removeKeycloakOperator(suiteCtx *types.SuiteContext, namespace string, sub *operatorsv1alpha1.Subscription, og *operatorsv1.OperatorGroup) {
 
-	olm.DeleteSubscription(suiteCtx, sub, false)
+	if sub != nil {
+		olm.DeleteSubscription(suiteCtx, sub, false)
+	}
 
-	var operatorGroupName string = namespace + "-operator-group"
-	olm.DeleteOperatorGroup(suiteCtx, namespace, operatorGroupName)
+	if og != nil {
+		var operatorGroupName string = namespace + "-operator-group"
+		olm.DeleteOperatorGroup(suiteCtx, namespace, operatorGroupName)
+	}
 
 	// kubernetescli.Execute("delete", "-n", namespace, "-f", filepath.Join(operatorDir, "deploy/operator.yaml"))
 	// kubernetescli.Execute("delete", "-n", namespace, "-f", filepath.Join(operatorDir, "deploy/service_account.yaml"))
