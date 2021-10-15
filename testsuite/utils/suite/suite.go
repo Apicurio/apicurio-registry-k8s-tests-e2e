@@ -141,6 +141,10 @@ func InitSuite(suiteCtx *types.SuiteContext) {
 
 }
 
+func PreTearDown(suiteCtx *types.SuiteContext) {
+	selenium.CollectSeleniumLogsIfNeeded(suiteCtx)
+}
+
 //TearDownSuite performs common logic for Ginkgo's AfterSuite
 func TearDownSuite(suiteCtx *types.SuiteContext) {
 	By("tearing down the test environment")

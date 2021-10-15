@@ -38,6 +38,8 @@ var _ = BeforeSuite(func(done Done) {
 
 var _ = AfterSuite(func() {
 
+	suite.PreTearDown(suiteCtx)
+
 	uninstallOperator()
 
 	suite.TearDownSuite(suiteCtx)
