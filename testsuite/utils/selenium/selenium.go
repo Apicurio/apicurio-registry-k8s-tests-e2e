@@ -17,6 +17,7 @@ import (
 
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
@@ -38,12 +39,22 @@ func RemoveSeleniumIfNeeded(suiteCtx *types.SuiteContext) {
 	}
 }
 
+func CollectSeleniumLogsIfNeeded(suiteCtx *types.SuiteContext) {
+	if isSeleniumNeeded(suiteCtx) {
+		logs.SaveTestPodsLogs(suiteCtx.Clientset, suiteCtx.SuiteID, seleniumNamespace, "selenium")
+	}
+}
+
 func isSeleniumNeeded(suiteCtx *types.SuiteContext) bool {
 	return suiteCtx.SetupSelenium || (utils.ApicurioTestsProfile != "" && (utils.ApicurioTestsProfile == "ui" || utils.ApicurioTestsProfile == "all" || utils.ApicurioTestsProfile == "acceptance"))
 }
 
 func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 	log.Info("Deploying selenium")
+
+	if !suiteCtx.IsOpenshift {
+		kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 180*time.Second, "ingress-nginx", "ingress-nginx-controller", 1)
+	}
 
 	kubernetesutils.CreateTestNamespace(suiteCtx.Clientset, seleniumNamespace)
 
@@ -57,8 +68,6 @@ func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 		_, err = suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Create(context.TODO(), ocpSeleniumRoute(seleniumNamespace), metav1.CreateOptions{})
 		Expect(err).ToNot(HaveOccurred())
 	} else {
-		kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 150*time.Second, "ingress-nginx", "ingress-nginx-controller", 1)
-
 		err = suiteCtx.K8sClient.Create(context.TODO(), seleniumIngress(seleniumNamespace))
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -112,8 +121,9 @@ func seleniumDeployment(namespace string) *v1.Deployment {
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  seleniumName,
-							Image: "selenium/standalone-chrome",
+							Name: seleniumName,
+							// Image: "selenium/standalone-chrome",
+							Image: "quay.io/redhatqe/selenium-standalone",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: 4444,
@@ -124,7 +134,7 @@ func seleniumDeployment(namespace string) *v1.Deployment {
 							ReadinessProbe: &corev1.Probe{
 								Handler: corev1.Handler{
 									HTTPGet: &corev1.HTTPGetAction{
-										Path: "/wd/hub",
+										Path: "/wd/hub/status",
 										Port: intstr.FromInt(4444),
 									},
 								},
