@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/Apicurio/apicurio-registry-operator v1.0.1-0.20210702070317-8fcad4efd108
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/onsi/ginkgo v1.16.5-0.20210926212817-d0c597ffc7d0
 	github.com/onsi/gomega v1.16.0
 	github.com/openshift/api v0.0.0-20210317213936-dcbf045ae1b8

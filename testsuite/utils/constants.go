@@ -64,6 +64,9 @@ var ApicurioProjectDir string = os.Getenv(apicurioProjectDirEnvVar)
 //ApicurioTestsProfile value of ApicurioTestsProfileEnvVar
 var ApicurioTestsProfile string = os.Getenv(apicurioTestsProfileEnvVar)
 
+//ApicurioTestsProfileDefault default value for Apicurio Functional testsuite profile
+var ApicurioTestsProfileDefault string = "smoke"
+
 //StrimziOperatorBundlePath value of StrimziOperatorBundlePathEnvVar
 var StrimziOperatorBundlePath string = os.Getenv(strimziOperatorBundlePathEnvVar)
 

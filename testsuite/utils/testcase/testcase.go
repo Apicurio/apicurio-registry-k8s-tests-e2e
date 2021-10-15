@@ -11,6 +11,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/apicurio/deploy"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/converters"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/functional"
+	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/migration"
@@ -158,6 +159,12 @@ func MultinamespacedTestCase(suiteCtx *types.SuiteContext) {
 func executeTestCase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 	executeTestOnStorage(suiteCtx, testContext, func() {
 		if !suiteCtx.OnlyTestOperator {
+			//shared kafka deployment in k8s
+			sharedKafkaCluster := kafkasql.DeploySharedKafkaIfNeeded(suiteCtx, testContext)
+			if sharedKafkaCluster != nil {
+				defer kafkasql.RemoveSharedKafkaIfNeeded(suiteCtx, testContext, sharedKafkaCluster)
+				testContext.FunctionalTestsSharedKafkaCluster = sharedKafkaCluster
+			}
 			functional.ExecuteRegistryFunctionalTests(suiteCtx, testContext)
 		} else {
 			functional.BasicRegistryAPITest(testContext)

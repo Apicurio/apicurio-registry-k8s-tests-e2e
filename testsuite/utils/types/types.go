@@ -46,8 +46,9 @@ type TestContext struct {
 
 	cleanupFunctions []func()
 
-	FunctionalTestsProfile  string
-	FunctionalTestsExtraEnv []string
+	FunctionalTestsProfile            string
+	FunctionalTestsExtraEnv           []string
+	FunctionalTestsSharedKafkaCluster *KafkaClusterInfo
 
 	SkipInfraRemoval bool
 }

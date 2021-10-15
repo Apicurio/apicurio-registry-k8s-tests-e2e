@@ -72,7 +72,7 @@ func deploySeleniumChrome(suiteCtx *types.SuiteContext) {
 		Expect(err).ToNot(HaveOccurred())
 	}
 
-	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 180*time.Second, seleniumNamespace, seleniumName, 1)
+	kubernetesutils.WaitForDeploymentReady(suiteCtx.Clientset, 240*time.Second, seleniumNamespace, seleniumName, 1)
 
 	if suiteCtx.IsOpenshift {
 		seleniumRoute, err := suiteCtx.OcpRouteClient.Routes(seleniumNamespace).Get(context.TODO(), seleniumName, metav1.GetOptions{})
