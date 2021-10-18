@@ -10,7 +10,7 @@ func DeploySharedKafkaIfNeeded(suiteCtx *types.SuiteContext, ctx *types.TestCont
 	if isSharedKafkaNeeded(suiteCtx) {
 		log.Info("Deploying Shared Kafka cluster for tests")
 		kafkaRequest := &CreateKafkaClusterRequest{
-			Name:           "shared-kafka-" + uuid.NewString(),
+			Name:           "shared-kafka-" + uuid.NewString()[:5],
 			Namespace:      ctx.RegistryNamespace,
 			ExposeExternal: true,
 			Replicas:       1,
