@@ -30,5 +30,5 @@ func RemoveSharedKafkaIfNeeded(suiteCtx *types.SuiteContext, ctx *types.TestCont
 }
 
 func isSharedKafkaNeeded(suiteCtx *types.SuiteContext) bool {
-	return utils.ApicurioTestsProfile != "" && (utils.ApicurioTestsProfile == "all" || utils.ApicurioTestsProfile == "acceptance")
+	return utils.ApicurioTestsProfile != "" && (utils.ApicurioTestsProfile == "all" || utils.ApicurioTestsProfile == "acceptance" || utils.ApicurioTestsProfile == "serdes")
 }
