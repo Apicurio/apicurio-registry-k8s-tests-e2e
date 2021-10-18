@@ -311,13 +311,13 @@ func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterReq
 	}
 
 	if req.ExposeExternal {
-		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":443"
+		clusterInfo.ExternalBootstrapServers = kindBoostrapHost + ":80"
 		if suiteCtx.IsOpenshift {
 			route, err := suiteCtx.OcpRouteClient.Routes(req.Namespace).Get(context.TODO(), req.Name+"-kafka-bootstrap", metav1.GetOptions{})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(len(route.Status.Ingress)).ToNot(BeIdenticalTo(0))
 			host := route.Status.Ingress[0].Host
-			clusterInfo.ExternalBootstrapServers = host + ":443"
+			clusterInfo.ExternalBootstrapServers = host + ":80"
 		}
 	}
 
