@@ -333,8 +333,9 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 
 		Expect(packageManifest).ToNot(BeNil())
 
-		kubernetescli.Execute("get", "packagemanifest", "-n", catalogSourceNamespace, utils.OLMApicurioPackageManifestName, "-o", "yaml")
+		// kubernetescli.Execute("get", "packagemanifest", "-n", catalogSourceNamespace, utils.OLMApicurioPackageManifestName, "-o", "yaml")
 
+		log.Info("in cluster package manifest", "name", utils.OLMApicurioPackageManifestName, "defaultChannel", packageManifest.Status.DefaultChannel)
 		channelName = packageManifest.Status.DefaultChannel
 		if utils.OLMApicurioChannelName != "" {
 			channelName = utils.OLMApicurioChannelName
@@ -349,10 +350,14 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 
 	if utils.OLMApicurioChannelName != "" {
 		channelName = utils.OLMApicurioChannelName
+		log.Info("overriding OLM channelName, channel name configured via env var", "channel", channelName)
 	}
 
 	if utils.OLMApicurioCSV != "" {
 		channelCSV = utils.OLMApicurioCSV
+		log.Info("overriding OLM channelCSV, channel CSV configured via env var", "channelCSV", channelCSV)
+	} else {
+		log.Info("using current OLM channelCSV from channel", "channel", channelName, "channelCSV", channelCSV)
 	}
 
 	Expect(channelName).NotTo(BeEquivalentTo(""))
