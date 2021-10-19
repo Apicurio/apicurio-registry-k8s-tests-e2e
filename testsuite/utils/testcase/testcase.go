@@ -32,8 +32,8 @@ func CommonTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			executeTestCase(suiteCtx, testContext)
 		},
 
-		Entry("sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace, Size: size}),
-		Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace, Size: size}),
+		Entry("storage-sql", &types.TestContext{Storage: utils.StorageSql, RegistryNamespace: namespace, Size: size}),
+		Entry("storage-kafkasq", &types.TestContext{Storage: utils.StorageKafkaSql, RegistryNamespace: namespace, Size: size}),
 	)
 
 	if suiteCtx.OnlyTestOperator {

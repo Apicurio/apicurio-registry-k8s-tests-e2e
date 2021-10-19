@@ -68,6 +68,8 @@ func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.Tes
 	}
 
 	if ctx.FunctionalTestsSharedKafkaCluster != nil {
+		//TODO setup kafka cluster certificates and use those in the java tests
+		//currently java tests kafka clients are configured to trust all certificates, change when possible
 		sharedKafkaEnvs := []string{
 			"TESTS_SHARED_KAFKA=" + ctx.FunctionalTestsSharedKafkaCluster.ExternalBootstrapServers,
 		}
