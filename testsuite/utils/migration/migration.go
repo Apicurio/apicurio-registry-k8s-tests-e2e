@@ -6,6 +6,7 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
 
+//DataMigrationTestcase runs migration profile in Functional testsuite, this profile tests the import/export functionalities of the Apicurio Registry API
 func DataMigrationTestcase(suiteCtx *types.SuiteContext, testContext *types.TestContext) {
 
 	sourceCtx := &types.TestContext{

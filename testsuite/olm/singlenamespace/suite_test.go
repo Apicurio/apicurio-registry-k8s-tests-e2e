@@ -42,6 +42,8 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 
+	suite.PreTearDown(suiteCtx)
+
 	olm.UninstallOperatorOLM(suiteCtx, operatorNamespace, false, olminfo)
 
 	suite.TearDownSuite(suiteCtx)

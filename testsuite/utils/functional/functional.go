@@ -24,7 +24,7 @@ var log = logf.Log.WithName("functional")
 
 //ExecuteRegistryFunctionalTests invokes via maven the integration tests in apicurio-registry repo
 func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
-	testProfile := "smoke"
+	testProfile := utils.ApicurioTestsProfileDefault
 	if ctx.FunctionalTestsProfile != "" {
 		testProfile = ctx.FunctionalTestsProfile
 	} else if utils.ApicurioTestsProfile != "" {
@@ -65,6 +65,15 @@ func ExecuteRegistryFunctionalTests(suiteCtx *types.SuiteContext, ctx *types.Tes
 
 	if ctx.FunctionalTestsExtraEnv != nil {
 		env = append(env, ctx.FunctionalTestsExtraEnv...)
+	}
+
+	if ctx.FunctionalTestsSharedKafkaCluster != nil {
+		//TODO setup kafka cluster certificates and use those in the java tests
+		//currently java tests kafka clients are configured to trust all certificates, change when possible
+		sharedKafkaEnvs := []string{
+			"TESTS_SHARED_KAFKA=" + ctx.FunctionalTestsSharedKafkaCluster.ExternalBootstrapServers,
+		}
+		env = append(env, sharedKafkaEnvs...)
 	}
 
 	err = utils.ExecuteCmd(true, &utils.Command{Cmd: command, Env: env})
