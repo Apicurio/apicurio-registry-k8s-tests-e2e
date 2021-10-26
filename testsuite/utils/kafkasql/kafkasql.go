@@ -434,6 +434,9 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 		bundlePath = utils.StrimziOperatorBundlePath
 	}
 
+	//execute a safe delete first as a cleanup in case other testsuite executions leaved something
+	kubernetescli.Execute("delete", "-f", bundlePath, "-n", namespace, "--ignore-not-found")
+	//apply the yaml manifests
 	kubernetescli.Execute("create", "-f", bundlePath, "-n", namespace)
 
 	// sh("oc wait deployment/strimzi-cluster-operator --for condition=available --timeout=180s")
