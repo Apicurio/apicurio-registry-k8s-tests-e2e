@@ -64,12 +64,15 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	kafkaClusterName := "test-debezium-kafka"
 	var kafkaClusterInfo *types.KafkaClusterInfo = kafkasql.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
-		kafkaCleanup := func() {
-			kafkasql.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
+		strimziCleanup := func() {
 			kafkasql.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
 		}
-		testContext.RegisterCleanup(kafkaCleanup)
+		testContext.RegisterCleanup(strimziCleanup)
 	}
+	kafkaCleanup := func() {
+		kafkasql.RemoveKafkaCluster(suiteCtx.Clientset, testContext.RegistryNamespace, kafkaClusterInfo)
+	}
+	testContext.RegisterCleanup(kafkaCleanup)
 
 	sql.DeployDebeziumPostgresqlDatabase(suiteCtx, testContext.RegistryNamespace, databaseName, databaseName, databaseUser, databasePassword)
 	postgresCleanup := func() {
