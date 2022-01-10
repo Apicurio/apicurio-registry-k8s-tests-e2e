@@ -6,5 +6,5 @@ then
 fi
 
 echo "Installing Antora"
-sudo npm i -g @antora/cli @antora/site-generator-default
+sudo npm i -g @antora/cli@3.0.0 @antora/site-generator@3.0.0
 antora -v
