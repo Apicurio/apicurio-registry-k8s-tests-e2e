@@ -14,7 +14,6 @@ import (
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kafkasql"
 	kubernetesutils "github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/kubernetes"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/logs"
-	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/migration"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/security"
 	"github.com/Apicurio/apicurio-registry-k8s-tests-e2e/testsuite/utils/types"
 )
@@ -96,15 +95,16 @@ func AdvancedTestCases(suiteCtx *types.SuiteContext, namespace string) {
 			)
 		}
 
-		var _ = DescribeTable("data migration",
-			func(testContext *types.TestContext) {
-				defer SaveLogsAndExecuteTestCleanups(suiteCtx, testContext)
-				migration.DataMigrationTestcase(suiteCtx, testContext)
-			},
+		//migration tests are executed and managed by integration tests testsuite, not longer supported to run from k8s testsuite
+		// var _ = DescribeTable("data migration",
+		// 	func(testContext *types.TestContext) {
+		// 		defer SaveLogsAndExecuteTestCleanups(suiteCtx, testContext)
+		// 		migration.DataMigrationTestcase(suiteCtx, testContext)
+		// 	},
 
-			Entry("sql", &types.TestContext{Storage: utils.StorageSql, ID: utils.StorageSql, RegistryNamespace: utils.OperatorNamespace}),
-			Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, ID: utils.StorageKafkaSql, RegistryNamespace: utils.OperatorNamespace}),
-		)
+		// 	Entry("sql", &types.TestContext{Storage: utils.StorageSql, ID: utils.StorageSql, RegistryNamespace: utils.OperatorNamespace}),
+		// 	Entry("kafkasql", &types.TestContext{Storage: utils.StorageKafkaSql, ID: utils.StorageKafkaSql, RegistryNamespace: utils.OperatorNamespace}),
+		// )
 
 		// var _ = It("backup and restore", func() {
 		// 	ctx := &types.TestContext{}
