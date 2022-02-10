@@ -97,6 +97,7 @@ type SuiteContext struct {
 	DisableConvertersTests  bool
 	DisableAuthTests        bool
 	OLMRunAdvancedTestcases bool
+	InstallStrimziOLM       bool
 
 	SetupSelenium bool
 	SeleniumHost  string
@@ -115,6 +116,8 @@ type KafkaClusterInfo struct {
 	Replicas                 int
 	Topics                   []string
 	StrimziDeployed          bool
+	OLMSubscription          *operatorsv1alpha1.Subscription
+	OLMOperatorGroup         *operatorsv1.OperatorGroup
 	BootstrapServers         string
 	ExternalBootstrapServers string
 	AuthType                 string

@@ -65,7 +65,7 @@ func ConvertersTestCase(suiteCtx *types.SuiteContext, testContext *types.TestCon
 	var kafkaClusterInfo *types.KafkaClusterInfo = kafkasql.DeployKafkaClusterV2(suiteCtx, testContext.RegistryNamespace, 1, true, kafkaClusterName, []string{})
 	if kafkaClusterInfo.StrimziDeployed {
 		strimziCleanup := func() {
-			kafkasql.RemoveStrimziOperator(suiteCtx.Clientset, testContext.RegistryNamespace)
+			kafkasql.RemoveStrimziOperator(suiteCtx, kafkaClusterInfo)
 		}
 		testContext.RegisterCleanup(strimziCleanup)
 	}
