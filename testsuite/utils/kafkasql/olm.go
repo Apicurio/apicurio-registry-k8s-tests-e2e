@@ -41,17 +41,13 @@ func deployStrimziOperatorOLM(suiteCtx *types.SuiteContext, namespace string) (*
 		ChannelCSV:             "0.23.0",
 	}
 	if suiteCtx.IsOpenshift {
-		// subreq.CatalogSourceName = "community-operators"
-		// subreq.CatalogSourceNamespace = "openshift-marketplace"
-		// TODO fill with openshift downstream values!!! help needed
 		sr = &olm.CreateSubscriptionRequest{
 			SubscriptionNamespace:  namespace,
-			SubscriptionName:       "strimzi-kafka-operator",
-			Package:                "strimzi-kafka-operator",
-			CatalogSourceName:      "operatorhubio-catalog",
-			CatalogSourceNamespace: "olm",
-			ChannelName:            "stable",
-			ChannelCSV:             "0.23.0",
+			SubscriptionName:       "amq-streams",
+			Package:                "amq-streams",
+			CatalogSourceName:      "redhat-operators",
+			CatalogSourceNamespace: "openshift-marketplace",
+			ChannelName:            "amq-streams-1.x",
 		}
 	}
 
