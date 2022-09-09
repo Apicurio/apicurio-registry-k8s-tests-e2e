@@ -379,6 +379,7 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 		ChannelName:            channelName,
 	})
 	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
+	kubernetescli.GetPods("olm") // tmp
 
 	return &OLMInstallationInfo{
 		CatalogSource: catalog,
