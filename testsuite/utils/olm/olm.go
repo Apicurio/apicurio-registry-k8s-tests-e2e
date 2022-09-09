@@ -54,7 +54,7 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 			SourceType:  operatorsv1alpha1.SourceTypeGrpc,
 		},
 	}, metav1.CreateOptions{})
-	if strings.Contains(err.Error(), "already exists") {
+	if err != nil && strings.Contains(err.Error(), "already exists") {
 		log.Info("WARN: Trying to ignore error", "error", err)
 	} else {
 		Expect(err).ToNot(HaveOccurred())
