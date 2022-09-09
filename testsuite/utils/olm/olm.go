@@ -3,6 +3,7 @@ package olm
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	kubeerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -53,7 +54,11 @@ func CreateCatalogSource(suiteCtx *types.SuiteContext, catalogSourceNamespace st
 			SourceType:  operatorsv1alpha1.SourceTypeGrpc,
 		},
 	}, metav1.CreateOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if strings.Contains(err.Error(), "already exists") {
+		log.Info("WARN: Trying to ignore error", "error", err)
+	} else {
+		Expect(err).ToNot(HaveOccurred())
+	}
 
 	timeout := 200 * time.Second
 	log.Info("Waiting for catalog source", "timeout", timeout)
