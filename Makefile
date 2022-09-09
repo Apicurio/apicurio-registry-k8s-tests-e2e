@@ -31,7 +31,7 @@ OLM_PACKAGE_MANIFEST_NAME?=apicurio-registry-operator
 export E2E_OLM_PACKAGE_MANIFEST_NAME=$(OLM_PACKAGE_MANIFEST_NAME)
 # OLM Channel ommited, default channel will be used
 # Temporarily uncommenting the following two lines, since the default channel does not seem to be detected?
-OLM_CHANNEL?=apicurio-registry-2.x
+OLM_CHANNEL?=2.x
 export E2E_OLM_CHANNEL=$(OLM_CHANNEL)
 export E2E_OLM_CSV=apicurio-registry-operator.v1.1.0-dev
 OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-bundle:1.1.0-dev
