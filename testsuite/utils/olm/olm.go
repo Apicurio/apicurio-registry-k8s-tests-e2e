@@ -337,6 +337,7 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(packageManifest).ToNot(BeNil())
+		log.Info("Packagemanifest", "value", packageManifest)
 
 		// kubernetescli.Execute("get", "packagemanifest", "-n", catalogSourceNamespace, utils.OLMApicurioPackageManifestName, "-o", "yaml")
 
