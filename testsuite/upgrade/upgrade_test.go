@@ -86,7 +86,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 		ChannelName: channel,
 		ChannelCSV:  startingCSV,
 	})
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace, utils.OperatorDeploymentNameOlm)
 
 	ctx.RegisterCleanup(func() {
 		olm.DeleteSubscription(suiteCtx, sub, true)
@@ -189,7 +189,7 @@ func executeUpgradeTest(suiteCtx *types.SuiteContext, ctx *types.TestContext) {
 	// kubernetescli.Execute("get", "apicurioregistry", "-o", "yaml")
 
 	//wait for deployments
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace, utils.OperatorDeploymentNameOlm)
 	apicurioutils.WaitForRegistryReady(suiteCtx, ctx.RegistryNamespace, ctx.RegistryName, int32(ctx.Replicas))
 
 	//verify artifacts after upgrade

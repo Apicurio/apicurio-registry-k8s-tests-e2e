@@ -46,7 +46,8 @@ const (
 	StorageKafkaSql = "kafkasql"
 )
 
-var OperatorDeploymentName string = "apicurio-registry-operator-v" + os.Getenv(OperatorVersionEnvVar)
+var OperatorDeploymentName string = "apicurio-registry-operator"
+var OperatorDeploymentNameOlm string = OperatorDeploymentName + "-v" + os.Getenv(OperatorVersionEnvVar)
 
 //SuiteProjectDir value of SuiteProjectDirEnvVar
 var SuiteProjectDir string = os.Getenv(suiteProjectDirEnvVar)

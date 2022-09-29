@@ -36,11 +36,17 @@ func SaveOperatorLogs(clientset *kubernetes.Clientset, suiteID string, namespace
 	createEventsLogFile(logsDir, namespace)
 	createNodesLogFile(logsDir)
 
-	operatorDeployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
+	operatorDeployment, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentNameOlm, metav1.GetOptions{})
 	if err != nil {
 		if kubeerrors.IsNotFound(err) {
-			log.Info("Skipping storing operator logs because operator deployment not found")
-			return
+			operatorDeployment, err = clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
+			if err != nil {
+				if kubeerrors.IsNotFound(err) {
+					log.Info("Skipping storing operator logs because operator deployment not found")
+					return
+				}
+			}
+			Expect(err).ToNot(HaveOccurred())
 		}
 		Expect(err).ToNot(HaveOccurred())
 	}

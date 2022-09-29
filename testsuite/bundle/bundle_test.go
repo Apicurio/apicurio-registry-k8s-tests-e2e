@@ -70,7 +70,7 @@ func installOperator() {
 		kubernetescli.Execute("delete", "pod", "-l", "name=apicurio-registry-operator", "-n", operatorNamespace)
 	}
 
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, operatorNamespace, utils.OperatorDeploymentName)
 
 }
 
@@ -96,7 +96,7 @@ func uninstallOperator() {
 		kubernetescli.Execute("delete", "-n", operatorNamespace, "-f", filepath.Join(bundlePath, "service_account.yaml"))
 	}
 
-	kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, operatorNamespace)
+	kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, operatorNamespace, utils.OperatorDeploymentName)
 
 	kubernetesutils.DeleteTestNamespace(suiteCtx.Clientset, operatorNamespace)
 

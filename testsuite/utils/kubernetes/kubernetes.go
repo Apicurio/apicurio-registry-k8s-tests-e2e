@@ -88,11 +88,11 @@ func DeleteTestNamespace(clientset *kubernetes.Clientset, namespace string) {
 	}
 }
 
-func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace string) {
+func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace string, operatorDeploymentName string) {
 	timeout := 500 * time.Second
 	log.Info("Waiting for operator to be deployed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), operatorDeploymentName, metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -107,11 +107,11 @@ func WaitForOperatorDeploymentReady(clientset *kubernetes.Clientset, namespace s
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace string) {
+func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace string, operatorDeploymentName string) {
 	timeout := 60 * time.Second
 	log.Info("Waiting for operator to be removed", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
+		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), operatorDeploymentName, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil
@@ -127,8 +127,8 @@ func WaitForOperatorDeploymentRemoved(clientset *kubernetes.Clientset, namespace
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func isOperatorDeployed(clientset *kubernetes.Clientset, namespace string) (bool, error) {
-	od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), utils.OperatorDeploymentName, metav1.GetOptions{})
+func isOperatorDeployed(clientset *kubernetes.Clientset, namespace string, operatorDeploymentName string) (bool, error) {
+	od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), operatorDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil

@@ -242,7 +242,7 @@ func DeleteSubscription(suiteCtx *types.SuiteContext, sub *operatorsv1alpha1.Sub
 			Expect(err).ToNot(HaveOccurred())
 		}
 		if defaultWait {
-			kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, sub.Namespace)
+			kubernetesutils.WaitForOperatorDeploymentRemoved(suiteCtx.Clientset, sub.Namespace, utils.OperatorDeploymentNameOlm)
 		}
 	}
 }
@@ -378,7 +378,7 @@ func InstallOperatorOLM(suiteCtx *types.SuiteContext, operatorNamespace string, 
 		ChannelCSV:             channelCSV,
 		ChannelName:            channelName,
 	})
-	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace)
+	kubernetesutils.WaitForOperatorDeploymentReady(suiteCtx.Clientset, sub.Namespace, utils.OperatorDeploymentNameOlm)
 	kubernetescli.GetPods("olm") // tmp
 
 	return &OLMInstallationInfo{
