@@ -10,3 +10,5 @@ manifests_replacer.sh
 bundle*
 xunit-report.xml
 coverprofile.out
+.idea
+.notes
