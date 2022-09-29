@@ -36,15 +36,17 @@ const (
 	imagePullSecretPasswordEnvVar = "E2E_PULL_SECRET_PASSWORD"
 	ImagePullSecretName           = "apicurio-registry-pull-secret"
 
-	OperatorNamespace      = "apicurio-registry-e2e"
-	OperatorDeploymentName = "apicurio-registry-operator"
-	APIPollInterval        = 2 * time.Second
-	MediumPollInterval     = 5 * time.Second
-	LongPollInterval       = 10 * time.Second
+	OperatorNamespace     = "apicurio-registry-e2e"
+	OperatorVersionEnvVar = "E2E_OPERATOR_VERSION"
+	APIPollInterval       = 2 * time.Second
+	MediumPollInterval    = 5 * time.Second
+	LongPollInterval      = 10 * time.Second
 
 	StorageSql      = "sql"
 	StorageKafkaSql = "kafkasql"
 )
+
+var OperatorDeploymentName string = "apicurio-registry-operator-v" + os.Getenv(OperatorVersionEnvVar)
 
 //SuiteProjectDir value of SuiteProjectDirEnvVar
 var SuiteProjectDir string = os.Getenv(suiteProjectDirEnvVar)

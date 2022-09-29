@@ -23,8 +23,11 @@ E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/install.yaml
 export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
 
+VERSION ?= 1.1.0-dev
+export E2E_OPERATOR_VERSION=$(VERSION)
+
 OPERATOR_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator
-OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:1.1.0-dev
+OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:$(VERSION)
 
 # olm variables
 OLM_PACKAGE_MANIFEST_NAME?=apicurio-registry-operator
