@@ -14,20 +14,55 @@ endif
 GINKGO_CMD = go run github.com/onsi/ginkgo/ginkgo
 
 export E2E_SUITE_PROJECT_DIR=$(shell pwd)
+OPERATOR_PROJECT_DIR ?= $(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator
 
 # apicurio-registry variables
 E2E_APICURIO_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry
 # export E2E_APICURIO_TESTS_PROFILE=all
 
 # operator bundle variables, operator repo should always have to be pulled, in order to access install.yaml file
-BUNDLE_URL?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator/dist/install.yaml
-export E2E_OPERATOR_BUNDLE_PATH=$(BUNDLE_URL)
+BUNDLE_PATH ?= $(OPERATOR_PROJECT_DIR)/dist/install.yaml
+export E2E_OPERATOR_BUNDLE_PATH = $(BUNDLE_PATH)
 
-VERSION ?= 1.1.0-dev
-export E2E_OPERATOR_VERSION=$(VERSION)
+ifeq ($(OPERATOR_VERSION),)
+$(error OPERATOR_VERSION is required)
+endif
 
-OPERATOR_PROJECT_DIR?=$(E2E_SUITE_PROJECT_DIR)/apicurio-registry-operator
-OPERATOR_IMAGE?=quay.io/apicurio/apicurio-registry-operator:$(VERSION)
+export E2E_OPERATOR_VERSION = $(OPERATOR_VERSION)
+
+ifeq ($(OPERATOR_IMAGE_REPOSITORY),)
+$(error OPERATOR_IMAGE_REPOSITORY is required)
+endif
+
+ifeq ($(OPERATOR_IMAGE),)
+$(error OPERATOR_IMAGE is required)
+endif
+
+CI_BUILD_OPERATOR_IMAGE = localhost:5000/apicurio-registry-operator:latest-ci
+
+ifeq ($(PACKAGE_VERSION),)
+$(error PACKAGE_VERSION is required)
+endif
+
+export E2E_OLM_CSV = apicurio-registry-operator.v$(PACKAGE_VERSION)
+
+ifeq ($(BUNDLE_IMAGE),)
+$(error BUNDLE_IMAGE is required)
+endif
+
+CI_BUILD_BUNDLE_IMAGE = localhost:5000/apicurio-registry-operator-bundle:latest-ci
+
+ifeq ($(CATALOG_IMAGE),)
+$(error CATALOG_IMAGE is required)
+endif
+
+CI_BUILD_CATALOG_IMAGE = localhost:5000/apicurio-registry-operator-catalog:latest-ci
+
+ifeq ($(CI_BUILD),true)
+export E2E_OLM_CATALOG_SOURCE_IMAGE = $(CI_BUILD_CATALOG_IMAGE)
+else
+export E2E_OLM_CATALOG_SOURCE_IMAGE = $(CATALOG_IMAGE)
+endif
 
 # olm variables
 OLM_PACKAGE_MANIFEST_NAME?=apicurio-registry-operator
@@ -37,20 +72,6 @@ export E2E_OLM_PACKAGE_MANIFEST_NAME=$(OLM_PACKAGE_MANIFEST_NAME)
 OLM_CHANNEL?=2.x
 export E2E_OLM_CHANNEL=$(OLM_CHANNEL)
 
-OLM_CSV?=apicurio-registry-operator.v1.1.0-dev-v2.x
-export E2E_OLM_CSV=$(OLM_CSV)
-
-OPERATOR_METADATA_IMAGE?=quay.io/apicurio/apicurio-registry-operator-bundle:latest-dev
-ifeq ($(CI_BUILD),true)
-OPERATOR_METADATA_IMAGE=localhost:5000/apicurio-registry-operator-bundle:latest-ci
-endif
-
-CATALOG_SOURCE_IMAGE?=quay.io/apicurio/apicurio-registry-operator-catalog:latest-dev
-ifeq ($(CI_BUILD),true)
-CATALOG_SOURCE_IMAGE=localhost:5000/apicurio-registry-operator-catalog:latest-ci
-endif
-
-export E2E_OLM_CATALOG_SOURCE_IMAGE=$(CATALOG_SOURCE_IMAGE)
 OLM_CATALOG_SOURCE_NAMESPACE?=olm
 export E2E_OLM_CATALOG_SOURCE_NAMESPACE=$(OLM_CATALOG_SOURCE_NAMESPACE)
 OLM_CLUSTER_WIDE_OPERATORS_NAMESPACE?=operators
@@ -65,8 +86,8 @@ export E2E_OLM_UPGRADE_OLD_CATALOG_NAMESPACE=olm
 #E2E_OLM_CATALOG_SOURCE_IMAGE is used as new catalog
 
 # kafka storage variables
-STRIMZI_BUNDLE_URL?=https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.23.0/strimzi-cluster-operator-0.23.0.yaml
-export E2E_STRIMZI_BUNDLE_PATH=$(STRIMZI_BUNDLE_URL)
+STRIMZI_BUNDLE_PATH ?= https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.23.0/strimzi-cluster-operator-0.23.0.yaml
+export E2E_STRIMZI_BUNDLE_PATH = $(STRIMZI_BUNDLE_PATH)
 
 # CI
 run-operator-ci: kind-start kind-setup-olm setup-operator-deps run-operator-tests
@@ -79,19 +100,32 @@ run-upgrade-ci: kind-start kind-setup-olm kind-catalog-source-img run-upgrade-te
 
 run-operator-simple: kind-start run-operator-tests/only-bundle
 
-CI_BUILD_OPERATOR_IMAGE=localhost:5000/apicurio-registry-operator:latest-ci
 
 kind-catalog-source-img:
 ifeq ($(CI_BUILD),true)
-	cd $(OPERATOR_PROJECT_DIR); make ADD_LATEST_TAG=false BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) OPERATOR_IMAGE=$(CI_BUILD_OPERATOR_IMAGE) bundle-build bundle-push
-	cd $(OPERATOR_PROJECT_DIR); make ADD_LATEST_TAG=false BUNDLE_IMAGE=$(OPERATOR_METADATA_IMAGE) CATALOG_IMAGE=$(CATALOG_SOURCE_IMAGE) OPERATOR_IMAGE=$(CI_BUILD_OPERATOR_IMAGE) catalog-build catalog-push
-	docker push $(CATALOG_SOURCE_IMAGE)
+	# We need to build the bundle and catalog image which reference the CI images
+	cd $(OPERATOR_PROJECT_DIR); make ADD_LATEST_TAG=false OPERATOR_IMAGE=$(CI_BUILD_OPERATOR_IMAGE) BUNDLE_IMAGE=$(CI_BUILD_BUNDLE_IMAGE) bundle bundle-build bundle-push
+	cd $(OPERATOR_PROJECT_DIR); make ADD_LATEST_TAG=false OPERATOR_IMAGE=$(CI_BUILD_OPERATOR_IMAGE) BUNDLE_IMAGE=$(CI_BUILD_BUNDLE_IMAGE) CATALOG_IMAGE=$(CI_BUILD_CATALOG_IMAGE) catalog-build catalog-push
+	docker push $(CI_BUILD_CATALOG_IMAGE)
 endif
 
+
+debug:
+	echo "$(OPERATOR_PROJECT_DIR)"
+	echo "$(OPERATOR_IMAGE_REPOSITORY)"
+	echo "$(BUNDLE_PATH)"
+	echo "$(E2E_OPERATOR_BUNDLE_PATH)"
+
+
 kind-load-operator-images:
+	echo "$(OPERATOR_PROJECT_DIR)"
+	echo "$(OPERATOR_IMAGE_REPOSITORY)"
+	echo "$(BUNDLE_PATH)"
+	echo "$(E2E_OPERATOR_BUNDLE_PATH)"
 	docker tag $(OPERATOR_IMAGE) $(CI_BUILD_OPERATOR_IMAGE)
 	docker push $(CI_BUILD_OPERATOR_IMAGE)
-	sed -i "s#quay.io/apicurio/apicurio-registry-operator.*#$(CI_BUILD_OPERATOR_IMAGE)#" $(E2E_OPERATOR_BUNDLE_PATH)
+	sed -i "s#$(OPERATOR_IMAGE_REPOSITORY)/apicurio-registry-operator.*#$(CI_BUILD_OPERATOR_IMAGE)#" $(E2E_OPERATOR_BUNDLE_PATH)
+
 
 setup-operator-deps: $(if $(CI_BUILD), kind-load-operator-images) kind-catalog-source-img
 
