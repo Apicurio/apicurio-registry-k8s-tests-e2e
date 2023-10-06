@@ -190,7 +190,7 @@ run-operator-tests:
 run-lp-tests:
 	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \
 		--junit-report=xunit-report.xml \
-		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator -disable-clustered-tests -enable-olm-advanced-tests
+		--cover --trace --race --progress -v ./testsuite/olm -- -only-test-operator -disable-clustered-tests -enable-olm-advanced-tests -install-strimzi-olm
 
 run-operator-tests/only-bundle:
 	$(GINKGO_CMD) -r --randomize-all --randomize-suites --fail-on-pending --keep-going \

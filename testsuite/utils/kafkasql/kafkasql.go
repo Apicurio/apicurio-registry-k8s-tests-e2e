@@ -10,6 +10,8 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	operatorsv1 "github.com/operator-framework/api/pkg/operators/v1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -145,8 +147,7 @@ func RemoveKafkaSqlRegistry(suiteCtx *types.SuiteContext, ctx *types.TestContext
 	if ctx.SkipInfraRemoval {
 		log.Info("Skipping removal of strimzi operator")
 	} else {
-		defer os.Remove(bundlePath)
-		RemoveStrimziOperator(suiteCtx.Clientset, ctx.RegistryNamespace)
+		RemoveStrimziOperator(suiteCtx, ctx.KafkaClusterInfo)
 	}
 
 }
@@ -174,9 +175,13 @@ func DeployKafkaClusterV2(suiteCtx *types.SuiteContext, namespace string, replic
 
 func DeployKafkaCluster(suiteCtx *types.SuiteContext, req *CreateKafkaClusterRequest) *types.KafkaClusterInfo {
 
-	strimziDeployed := deployStrimziOperator(suiteCtx.Clientset, req.Namespace)
+	strimziDeployed, sub, og := deployStrimziOperator(suiteCtx, req.Namespace)
 
-	clusterInfo := &types.KafkaClusterInfo{StrimziDeployed: strimziDeployed}
+	clusterInfo := &types.KafkaClusterInfo{
+		StrimziDeployed:  strimziDeployed,
+		OLMSubscription:  sub,
+		OLMOperatorGroup: og,
+	}
 
 	clusterInfo.Name = req.Name
 	clusterInfo.Namespace = req.Namespace
@@ -405,17 +410,22 @@ func RemoveKafkaConnect(suiteCtx *types.SuiteContext, kafkaClusterInfo *types.Ka
 	// Expect(err).ToNot(HaveOccurred())
 }
 
-func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bool {
+func deployStrimziOperator(suiteCtx *types.SuiteContext, namespace string) (bool, *operatorsv1alpha1.Subscription, *operatorsv1.OperatorGroup) {
 
-	_, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
+	_, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		Expect(err).ToNot(HaveOccurred())
 	} else if err == nil {
 		log.Info("Strimzi operator is already deployed")
-		return false
+		return false, nil, nil
 	}
 
 	log.Info("Deploying strimzi operator")
+
+	if suiteCtx.InstallStrimziOLM {
+		sub, og := deployStrimziOperatorOLM(suiteCtx, namespace)
+		return true, sub, og
+	}
 
 	if strings.HasPrefix(utils.StrimziOperatorBundlePath, "https://") {
 		bundlePath = "/tmp/strimzi-operator-bundle-" + strconv.Itoa(rand.Intn(1000)) + ".yaml"
@@ -443,7 +453,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 	timeout := 180 * time.Second
 	log.Info("Waiting for strimzi operator to be ready ", "timeout", timeout)
 	err = wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		od, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
+		od, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil && !errors.IsNotFound(err) {
 			return false, err
 		}
@@ -456,7 +466,7 @@ func deployStrimziOperator(clientset *kubernetes.Clientset, namespace string) bo
 	})
 	kubernetescli.GetPods(namespace)
 	Expect(err).ToNot(HaveOccurred())
-	return true
+	return true, nil, nil
 }
 
 //RemoveKafkaCluster removes a kafka cluster
@@ -495,14 +505,23 @@ func RemoveKafkaCluster(clientset *kubernetes.Clientset, namespace string, kafka
 }
 
 //RemoveStrimziOperator uninstalls strimzi operator
-func RemoveStrimziOperator(clientset *kubernetes.Clientset, namespace string) {
+func RemoveStrimziOperator(suiteCtx *types.SuiteContext, req *types.KafkaClusterInfo) {
 	log.Info("Removing strimzi operator")
+
+	if suiteCtx.InstallStrimziOLM {
+		removeStrimziOperatorOLM(suiteCtx, req.Namespace, req.OLMSubscription, req.OLMOperatorGroup)
+		return
+	}
+
+	var namespace string = req.Namespace
+
+	defer os.Remove(bundlePath)
 	kubernetescli.Execute("delete", "-f", bundlePath, "-n", namespace)
 
 	timeout := 120 * time.Second
 	log.Info("Waiting for strimzi cluster operator to be removed ", "timeout", timeout)
 	err := wait.Poll(utils.APIPollInterval, timeout, func() (bool, error) {
-		_, err := clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
+		_, err := suiteCtx.Clientset.AppsV1().Deployments(namespace).Get(context.TODO(), "strimzi-cluster-operator", metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return true, nil

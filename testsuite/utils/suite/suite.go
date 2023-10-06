@@ -36,6 +36,7 @@ var disableClusteredTests bool
 var disableConvertersTests bool
 var disableAuthTests bool
 var olmRunAdvancedTestcases bool
+var installStrimziOLM bool
 
 //SetFlags call this function on init function on test suite package
 func SetFlags() {
@@ -45,6 +46,7 @@ func SetFlags() {
 	flag.BoolVar(&disableConvertersTests, "disable-converters-tests", false, "to disable tests for kafka connect converters")
 	flag.BoolVar(&disableAuthTests, "disable-auth-tests", false, "to disable tests for keycloak authentication")
 	flag.BoolVar(&olmRunAdvancedTestcases, "enable-olm-advanced-tests", false, "to enable advanced tests for OLM testsuite")
+	flag.BoolVar(&installStrimziOLM, "install-strimzi-olm", false, "to enable the installation of Strimzi operator using OLM")
 }
 
 //NewSuiteContext creates the SuiteContext instance and loads some data like flags into the context
@@ -75,6 +77,11 @@ func NewSuiteContext(suiteID string) *types.SuiteContext {
 	suiteCtx.OLMRunAdvancedTestcases = olmRunAdvancedTestcases
 	if suiteCtx.OLMRunAdvancedTestcases {
 		log.Info("Running Advanced Testcases with OLM deployment")
+	}
+
+	suiteCtx.InstallStrimziOLM = installStrimziOLM
+	if suiteCtx.InstallStrimziOLM {
+		log.Info("Strimzi operator will be installed using OLM")
 	}
 
 	suiteCtx.SetupSelenium = setupSelenium
