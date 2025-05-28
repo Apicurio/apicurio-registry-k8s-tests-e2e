@@ -170,7 +170,7 @@ else
 	@echo "Creating Cluster"
 	./scripts/start-kind-image-registry.sh
 	# create a cluster with the local registry enabled in containerd
-	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.24.1 --config=./scripts/${KIND_CLUSTER_CONFIG}
+	${KIND_CMD} create cluster --name ${KIND_CLUSTER_NAME} --image=kindest/node:v1.25.16 --config=./scripts/${KIND_CLUSTER_CONFIG}
 	./scripts/setup-kind-image-registry.sh
 	# setup ingress
 	# using nginx ingress version v0.46.0
