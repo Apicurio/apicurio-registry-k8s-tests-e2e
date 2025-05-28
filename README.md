@@ -1,3 +1,9 @@
+> ⚠️ Warning
+> 
+> **This repository is in maintenance-only mode and will be archived in the near future.**
+
+<br/><br/>
+
 ![latest registry results](https://github.com/Apicurio/apicurio-registry-k8s-tests-e2e/workflows/Apicurio%20Registry%20Tests/badge.svg?branch=master)
 ![Latest operator results](https://github.com/Apicurio/apicurio-registry-k8s-tests-e2e/workflows/Apicurio%20Registry%20Operator%20Tests/badge.svg?branch=master)
 
