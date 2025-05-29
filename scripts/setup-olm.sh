@@ -8,7 +8,7 @@
 # kubectl delete catalogsource operatorhubio-catalog -n olm
 
 if [ ! -f "./install-olm.sh" ]; then
-    curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.22.0/install.sh -o install-olm.sh
+    curl -L https://github.com/operator-framework/operator-lifecycle-manager/releases/download/v0.32.0/install.sh -o install-olm.sh
     chmod +x install-olm.sh
 fi
 ./install-olm.sh v0.17.0
